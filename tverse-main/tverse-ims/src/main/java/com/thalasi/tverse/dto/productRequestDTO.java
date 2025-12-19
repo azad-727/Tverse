@@ -15,7 +15,7 @@ private String categoryName;
 private String hsnCode;
 private BigDecimal taxRate;
 private String imageUrl;
-
+private String material;
 //Variations Details
     private List<VariantDTO> variants;
     @Data
@@ -23,10 +23,14 @@ private String imageUrl;
         private String sku;
         private String size;
         private String color;
+        private BigDecimal regularPrice;
+        private BigDecimal salePrice;
         private BigDecimal procurementCost;
         private Integer supplierLeadTime;
         private String warehouseLocation;
         private int initialStock;
+        private String variantImageUrl;
+
     }
 
  }

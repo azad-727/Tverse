@@ -41,6 +41,8 @@ public class product {
     @Column(nullable = false)
     private boolean isActive = true;
 
+    private String material;
+
     @Column(length = 500) // Allow long URLs
     private String imageUrl;
 

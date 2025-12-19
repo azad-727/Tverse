@@ -7,6 +7,7 @@ import InventoryPage from './Components/InventoryPage';
 import ProductDetail from './Components/ProductDetail';//
 import InventoryMain from './Components/inventory/InventoryMain';
 import PicklistPage from './Components/PicklistPage';
+import OrderPage from './Components/order/OrderManagement';
 function App() {
   return (
     <BrowserRouter>
@@ -19,6 +20,7 @@ function App() {
             <Route path="/inventory" element={<InventoryPage />} /> {/* Default */}
             <Route path="/stock-management" element={<InventoryMain />} />
             <Route path="/picklist" element={<div className="p-4"><PicklistPage /></div>} />
+            <Route path="/orders" element={<div className="p-4"><OrderPage /></div>} />
             <Route path="/inventory/product/:id" element={<div className="p-4"><ProductDetail /></div>} />   
         </Routes>
       </Layout>

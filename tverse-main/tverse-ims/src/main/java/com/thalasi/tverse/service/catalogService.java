@@ -102,6 +102,7 @@ public class catalogService {
         Product.setHsnCode(request.getHsnCode());
         Product.setTaxRate(request.getTaxRate());
         Product.setImageUrl(request.getImageUrl());
+        Product.setMaterial(request.getMaterial());
         Product.setActive(true);
         product savedProduct= productRepo.save(Product);
 
@@ -112,6 +113,9 @@ public class catalogService {
              productVariant variant=new productVariant();
              variant.setProduct(savedProduct); //Link to Parent
              variant.setSku(vDto.getSku());
+             variant.setRegularPrice(vDto.getRegularPrice());
+             variant.setSalePrice(vDto.getSalePrice());
+             variant.setVariantImageUrl(vDto.getVariantImageUrl());
              variant.setSize(vDto.getSize());
              variant.setColor(vDto.getColor());
              variant.setProcurementCost(vDto.getProcurementCost());

@@ -32,6 +32,15 @@ public class productVariant {
     @Column
     private String color;
 
+    @Column(length=500)
+    private String variantImageUrl;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal regularPrice;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal salePrice;
+
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal procurementCost;
 

@@ -16,7 +16,7 @@ const AllInventoryView = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await axios.get("http://192.168.31.84:8080/api/catalog/list");
+            const res = await axios.get("http://localhost:8080/api/catalog/list");
             setProducts(res.data);
             setLoading(false);
         } catch (error) {
@@ -37,7 +37,7 @@ const AllInventoryView = () => {
 
     const saveEdit = async (variantId) => {
         try {
-            await axios.put("http://192.168.31.84:8080/api/catalog/quick-update", {
+            await axios.put("http://localhost:8080/api/catalog/quick-update", {
                 variantId: variantId,
                 stock: editForm.stock,
                 cost: editForm.cost

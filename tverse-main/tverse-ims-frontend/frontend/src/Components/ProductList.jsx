@@ -17,7 +17,7 @@ const ProductList = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await axios.get("http://192.168.31.84:8080/api/catalog/list");
+            const res = await axios.get("http://localhost:8080/api/catalog/list");
             setProducts(res.data);
             setLoading(false);
         } catch (error) {
@@ -38,7 +38,7 @@ const ProductList = () => {
 
     const saveEdit = async (variantId) => {
         try {
-            await axios.put("http://192.168.31.84:8080/api/catalog/quick-update", {
+            await axios.put("http://localhost:8080/api/catalog/quick-update", {
                 variantId: variantId,
                 stock: editForm.stock,
                 cost: editForm.cost
@@ -60,7 +60,7 @@ const ProductList = () => {
     const handleDelete = async (id) => {
         if (window.confirm("Are you sure you want to delete this listing? This cannot be undone.")) {
             try {
-                await axios.delete(`http://192.168.31.84:8080/api/catalog/delete/${id}`);
+                await axios.delete(`http://localhost:8080/api/catalog/delete/${id}`);
                 setProducts(products.filter(p => p.variantId !== id)); // Remove from UI
             } catch (error) {
                 alert("Delete Failed");
@@ -76,8 +76,9 @@ const ProductList = () => {
     const getImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
-    return `http://192.168.31.84:8080/${path}`;
+    return `http://localhost:8080/${path}`;
     };
+    
 
 
     if (loading) return <div className="text-center p-5"><span className="spinner-border text-success"></span> Loading Inventory...</div>;
@@ -124,9 +125,9 @@ const ProductList = () => {
     <td>
         <Link to={`/inventory/product/${p.variantId}`}>
             <div className="bg-light rounded d-flex align-items-center justify-content-center border overflow-hidden" style={{width: 50, height: 50}}>
-                {p.imageUrl ? (
+                {p.variantImageUrl ? (
                     <img 
-                        src={getImageUrl(p.imageUrl)} 
+                        src={p.variantImageUrl}
                         alt="" 
                         className="w-100 h-100 object-fit-cover" 
                         onError={(e) => e.target.style.display='none'} 

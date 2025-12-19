@@ -7,14 +7,19 @@ const PicklistPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     
-    // --- NEW: CHANNEL STATE ---
-    const [channel, setChannel] = useState("Flipkart"); // Default
+    // Batch ID for Delete Functionality
+    const [currentBatchId, setCurrentBatchId] = useState(null);
+    
+    // Options
+    const [channel, setChannel] = useState("Flipkart"); 
+    const [saveToDb, setSaveToDb] = useState(true);
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
         setError("");
     };
 
+    // --- GENERATE PICKLIST ---
     const handleGenerate = async () => {
         if (!file) {
             setError("Please select a file.");
@@ -23,15 +28,23 @@ const PicklistPage = () => {
 
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("channel", channel);
+        formData.append("saveToDb", saveToDb); // Send boolean to backend
 
         setLoading(true);
         setPicklist([]); 
+        setCurrentBatchId(null);
 
         try {
-            const response = await axios.post("http://192.168.31.84:8080/api/orders/generate-picklist", formData, {
+            const response = await axios.post("http://localhost:8080/api/orders/generate-picklist", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setPicklist(response.data);
+            
+            // Capture the Batch ID from the first item (if exists)
+            if (response.data.length > 0) {
+                setCurrentBatchId(response.data[0].picklistId);
+            }
         } catch (err) {
             console.error(err);
             setError("Failed to generate list: " + (err.response?.data || err.message));
@@ -40,10 +53,29 @@ const PicklistPage = () => {
         }
     };
 
+    // --- DELETE BATCH ---
+    const handleDeleteBatch = async () => {
+        if (!currentBatchId) return;
+        
+        if (!confirm("Are you sure? This will remove all sales history associated with this file upload.")) {
+            return;
+        }
+
+        try {
+            await axios.delete(`http://localhost:8080/api/orders/picklist/${currentBatchId}`);
+            alert("Orders deleted from history.");
+            setPicklist([]); // Clear UI
+            setCurrentBatchId(null);
+        } catch (error) {
+            alert("Delete failed: " + (error.response?.data || error.message));
+        }
+    };
+
+    // --- HELPERS ---
     const getImageUrl = (path) => {
         if (!path) return null;
         if (path.startsWith("http")) return path;
-        return `http://192.168.31.84:8080/${path}`;
+        return `http://localhost:8080/${path}`;
     };
 
     const formatVariant = (details) => {
@@ -56,24 +88,21 @@ const PicklistPage = () => {
         );
     };
 
-    // --- NEW: WHATSAPP SHARE LOGIC ---
+    // --- WHATSAPP SHARE ---
     const handleWhatsAppShare = () => {
         if (picklist.length === 0) return;
 
-        // 1. Create a Header
-        let message = ` *PICKLIST FOR ${channel.toUpperCase()}*\n`;
-        message += ` ${new Date().toLocaleDateString()} |  ${new Date().toLocaleTimeString()}\n`;
-        message += ` Total Items: *${picklist.reduce((acc, item) => acc + item.orderQty, 0)}*\n`;
+        let message = `📦 *PICKLIST FOR ${channel.toUpperCase()}*\n`;
+        message += `📅 ${new Date().toLocaleDateString()} | ⏰ ${new Date().toLocaleTimeString()}\n`;
+        message += `📊 Total Items: *${picklist.reduce((acc, item) => acc + item.orderQty, 0)}*\n`;
         message += `--------------------------------\n`;
 
-        // 2. Add Rows (Condensed for Chat)
         picklist.forEach(item => {
-            const statusIcon = item.status === 'READY' ? '' : '';
+            const statusIcon = item.status === 'READY' ? '✅' : '❌';
             message += `${statusIcon} *${item.location || 'NO LOC'}* : ${item.sku}\n`;
             message += `   └ Qty: *${item.orderQty}* | ${item.variantDetails || ''}\n\n`;
         });
 
-        // 3. Open WhatsApp
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
@@ -81,7 +110,7 @@ const PicklistPage = () => {
     return (
         <div className="container-fluid p-0">
             
-            {/* --- HEADER --- */}
+            {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4 d-print-none">
                 <div>
                     <h3 className="fw-bold mb-0">Daily Picklist</h3>
@@ -89,10 +118,12 @@ const PicklistPage = () => {
                 </div>
                 {picklist.length > 0 && (
                     <div className="d-flex gap-2">
-                        <button className="btn btn-outline-danger" onClick={() => window.location.reload()}>
-                            <i className="bi bi-trash"></i>
-                        </button>
-                        {/* WhatsApp Button */}
+                        {/* Only show delete if we have a valid batch ID */}
+                        {currentBatchId && (
+                            <button className="btn btn-outline-danger" onClick={handleDeleteBatch} title="Delete from History">
+                                <i className="bi bi-trash"></i>
+                            </button>
+                        )}
                         <button className="btn btn-success" onClick={handleWhatsAppShare}>
                             <i className="bi bi-whatsapp me-2"></i> Share
                         </button>
@@ -103,7 +134,7 @@ const PicklistPage = () => {
                 )}
             </div>
 
-            {/* --- UPLOAD BOX --- */}
+            {/* Upload Box */}
             {picklist.length === 0 && (
                 <div className="custom-card p-5 mb-4 d-print-none text-center">
                     <div className="border rounded p-5 bg-light mx-auto" style={{maxWidth: '600px', borderStyle: 'dashed'}}>
@@ -111,28 +142,40 @@ const PicklistPage = () => {
                         <h5 className="fw-bold">Generate Picklist</h5>
                         
                         {/* 1. CHANNEL SELECTION */}
-                        <div className="mb-3 text-start">
-                            <label className="form-label small fw-bold text-muted">Select Sales Channel</label>
-                            <select 
-                                className="form-select" 
-                                value={channel} 
-                                onChange={(e) => setChannel(e.target.value)}
-                            >
-                                <option value="Flipkart">Flipkart</option>
-                                <option value="Amazon">Amazon-Cocoblu</option>
-                                <option value="Amazon">Amazon</option>
-                                <option value="Meesho">Meesho</option>
-                                <option value="Meesho">Myntra</option>
-                                <option value="Meesho">Ajio</option>
-                                <option value="Website">My Website</option>
-                                <option value="B2B">Wholesale / B2B</option>
-                                <option value="B2B">Other</option>
-                            </select>
+                        <div className="row mb-3 text-start">
+                            <div className="col-md-6">
+                                <label className="form-label small fw-bold text-muted">Sales Channel</label>
+                                <select className="form-select" value={channel} onChange={(e) => setChannel(e.target.value)}>
+                                    <option value="Flipkart">Flipkart</option>
+                                    <option value="Amazon">Amazon</option>
+                                    <option value="Meesho">Meesho</option>
+                                    <option value="Website">My Website</option>
+                                    <option value="B2B">Wholesale / B2B</option>
+                                </select>
+                            </div>
+                            
+                            {/* 2. SAVE TOGGLE */}
+                            <div className="col-md-6">
+                                <label className="form-label small fw-bold text-muted">Data Options</label>
+                                <div className="form-check form-switch pt-2">
+                                    <input 
+                                        className="form-check-input" 
+                                        type="checkbox" 
+                                        id="saveToggle" 
+                                        checked={saveToDb}
+                                        onChange={(e) => setSaveToDb(e.target.checked)}
+                                        style={{cursor: 'pointer'}}
+                                    />
+                                    <label className="form-check-label small" htmlFor="saveToggle">
+                                        {saveToDb ? <span className="text-success fw-bold">Save to Analytics DB</span> : <span className="text-muted">Generate PDF Only</span>}
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* 2. FILE UPLOAD */}
+                        {/* File Upload */}
                         <div className="mb-4 text-start">
-                            <label className="form-label small fw-bold text-muted">Upload Order Report (.csv / .xlsx)</label>
+                            <label className="form-label small fw-bold text-muted">Upload Order Report</label>
                             <input type="file" className="form-control" onChange={handleFileChange} accept=".csv, .xlsx, .xls" />
                         </div>
                         
@@ -145,13 +188,11 @@ const PicklistPage = () => {
                 </div>
             )}
 
-            {/* --- RESULTS TABLE --- */}
+            {/* Results Table */}
             {picklist.length > 0 && (
                 <div className="card border-0 shadow-sm">
-                    {/* Print Header with Channel Name */}
                     <div className="d-none d-print-flex p-4 pb-0 justify-content-between align-items-end">
                         <div>
-                            {/* DYNAMIC CHANNEL NAME */}
                             <h2 className="fw-bold mb-0 text-uppercase">{channel} PICKLIST</h2>
                             <div className="small">Date: {new Date().toLocaleString()}</div>
                         </div>
@@ -166,8 +207,8 @@ const PicklistPage = () => {
                                 <tr className="text-uppercase small">
                                     <th style={{width: '15%'}} className="text-center">Loc</th>
                                     <th style={{width: '10%'}} className="text-center">Img</th>
-                                    <th style={{width: '25%'}}>SKU / Variant</th>
-                                    <th style={{width: '30%'}}>Product Name</th>
+                                    <th style={{width: '20%'}}>SKU / Variant</th>
+                                    <th style={{width: '35%'}}>Product Name</th>
                                     <th style={{width: '10%'}} className="text-center">QTY</th>
                                     <th style={{width: '10%'}} className="text-center">Check</th>
                                 </tr>
@@ -175,13 +216,9 @@ const PicklistPage = () => {
                             <tbody>
                                 {picklist.map((item, index) => (
                                     <tr key={index} style={{height: '60px'}}>
-                                        
                                         <td className="text-center bg-light">
-                                            <div className="fw-bold fs-5 text-dark no-wrap-data">
-                                                {item.location || "N/A"}
-                                            </div>
+                                            <div className="fw-bold fs-5 text-dark no-wrap-data">{item.location || "N/A"}</div>
                                         </td>
-
                                         <td className="text-center">
                                             <div className="img-box-fixed mx-auto">
                                                 {getImageUrl(item.imageUrl) ? (
@@ -189,20 +226,12 @@ const PicklistPage = () => {
                                                 ) : <span className="text-muted small">No Img</span>}
                                             </div>
                                         </td>
-
                                         <td>
-                                            <div className="fw-bold text-primary font-monospace no-wrap-data" style={{fontSize: '0.95rem'}}>
-                                                {item.sku}
-                                            </div>
-                                            <div className="mt-1">
-                                                {formatVariant(item.variantDetails)}
-                                            </div>
+                                            <div className="fw-bold text-primary font-monospace no-wrap-data" style={{fontSize: '0.95rem'}}>{item.sku}</div>
+                                            <div className="mt-1">{formatVariant(item.variantDetails)}</div>
                                         </td>
-
                                         <td>
-                                            <div className="product-name-truncate text-muted small" title={item.productName}>
-                                                {item.productName}
-                                            </div>
+                                            <div className="product-name-truncate text-muted small" title={item.productName}>{item.productName}</div>
                                             {item.status !== 'READY' && (
                                                 <div className="d-block mt-1">
                                                     {item.status === 'OUT_OF_STOCK' && <span className="badge bg-danger">Short: {item.stockAvailable}</span>}
@@ -210,13 +239,9 @@ const PicklistPage = () => {
                                                 </div>
                                             )}
                                         </td>
-
                                         <td className="text-center">
-                                            <span className="badge bg-dark fs-4 rounded-3 px-3">
-                                                {item.orderQty}
-                                            </span>
+                                            <span className="badge bg-dark fs-4 rounded-3 px-3">{item.orderQty}</span>
                                         </td>
-
                                         <td className="text-center">
                                             <div style={{width: '25px', height: '25px', border: '2px solid #ccc', margin: '0 auto', borderRadius: '4px'}}></div>
                                         </td>

@@ -138,4 +138,359 @@ body {
     text-overflow: ellipsis !important;
     max-width: 300px !important; /* Forces cut-off */
   }
+}/* =========================================
+   MODERN ORDER DASHBOARD STYLES
+   ========================================= */
+
+/* 1. Stats Cards (Top Row) */
+.modern-stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
 }
+.modern-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+.stat-icon-bg {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  font-size: 80px;
+  opacity: 0.05;
+  color: var(--tverse-green);
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d3748;
+  letter-spacing: -0.5px;
+}
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+}
+
+/* 2. Modern Tabs */
+.modern-tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 2px solid #edf2f7;
+  margin-bottom: 20px;
+}
+.modern-tab {
+  padding: 12px 0;
+  color: #718096;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+.modern-tab:hover { color: var(--tverse-green); }
+.modern-tab.active {
+  color: var(--tverse-green);
+}
+.modern-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--tverse-green);
+}
+
+/* 3. The Data Table (Glassy Look) */
+.modern-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.modern-table thead th {
+  background: #f8fafc;
+  color: #4a5568;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.5px;
+}
+.modern-table tbody tr {
+  transition: background 0.1s;
+}
+.modern-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+.modern-table td {
+  padding: 16px;
+  border-bottom: 1px solid #edf2f7;
+  vertical-align: middle;
+  font-size: 14px;
+  color: #2d3748;
+}
+
+/* 4. Product Cell - The "Rich" View */
+.product-flex {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.product-img-box {
+  width: 56px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #edf2f7;
+  background: white;
+  padding: 2px;
+}
+.product-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.meta-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgb(255 193 7);
+  color: black;
+  margin-right: 6px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 650;
+}
+
+/* 5. SLA Badges (Pills) */
+.sla-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sla-badge.danger { background-color: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+.sla-badge.warning { background-color: #fffaf0; color: #c05621; border: 1px solid #fbd38d; }
+.sla-badge.safe { background-color: #f0fff4; color: #2f855a; border: 1px solid #9ae6b4; }
+
+/* 6. Utility: Copy Icon */
+.copy-icon {
+  opacity: 0;
+  cursor: pointer;
+  margin-left: 5px;
+  color: #a0aec0;
+  font-size: 12px;
+  transition: opacity 0.2s;
+}
+tr:hover .copy-icon { opacity: 1; }
+.copy-icon:hover { color: var(--tverse-green); }
+/* ... existing css ... */
+
+/* =========================================
+   UNIQUE FEATURE: FLOATING COMMAND CENTER
+   ========================================= */
+
+.floating-dock {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a202c; /* Dark Mode Background */
+  color: white;
+  padding: 10px 24px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  z-index: 9999;
+  border: 1px solid rgba(255,255,255,0.1);
+  
+  /* Animation */
+  animation: slideUpBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes slideUpBounce {
+  from { bottom: -100px; opacity: 0; }
+  to { bottom: 40px; opacity: 1; }
+}
+
+.dock-counter {
+  background: var(--tverse-green);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dock-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.2);
+}
+
+.dock-btn {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.dock-btn:hover { color: white; }
+
+.dock-btn-primary {
+  background: var(--tverse-green);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 30px;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(114, 193, 70, 0.4);
+}
+.dock-btn-primary:hover {
+  background: #5da337;
+  transform: translateY(-1px);
+}
+
+/* Add a Pulse Effect to Urgent SLA Badges */
+.sla-pulse {
+  animation: pulse-red 2s infinite;
+}
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+/* =========================================
+   NEW FEATURE: SLIDE-OVER DRAWER
+   ========================================= */
+
+/* The Dark Overlay */
+.drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3); /* Slight dim */
+  backdrop-filter: blur(2px); /* Modern blur effect */
+  z-index: 10000; /* Highest priority */
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+}
+.drawer-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* The Sliding Panel */
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: -500px; /* Hidden off-screen */
+  width: 450px;
+  height: 100vh;
+  background: white;
+  z-index: 10001;
+  box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+  transition: right 0.4s cubic-bezier(0.19, 1, 0.22, 1); /* Smooth eased animation */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.drawer-panel.open {
+  right: 0; /* Slide in */
+}
+
+/* Drawer Internal Styles */
+.drawer-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #edf2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  position: sticky;
+  top: 0;
+}
+
+.drawer-body {
+  padding: 24px;
+  flex-grow: 1;
+}
+
+.profit-card {
+  background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+  border: 1px solid #c6f6d5;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.info-row.total {
+  border-top: 1px solid #cbd5e0;
+  padding-top: 12px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #2f855a;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 20px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cbd5e0;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px #cbd5e0;
+}
+.timeline-item.active::before {
+  background: var(--tverse-green);
+  box-shadow: 0 0 0 2px var(--tverse-green);
+}
+.timeline-item::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 18px;
+  width: 2px;
+  height: 100%;
+  background: #e2e8f0;
+}
+.timeline-item:last-child::after { display: none; }

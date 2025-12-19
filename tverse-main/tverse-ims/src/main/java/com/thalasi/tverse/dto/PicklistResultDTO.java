@@ -12,4 +12,5 @@ public class PicklistResultDTO {
     private int stockAvailable;
     private String status;         // "READY", "OUT_OF_STOCK", "SKU_MISMATCH"
     private String imageUrl;
+    private String picklistId;
 }

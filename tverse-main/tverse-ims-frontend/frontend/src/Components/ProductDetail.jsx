@@ -44,6 +44,7 @@ const ProductDetail = () => {
                         procurementCost: v.cost,
                         initialStock: v.stock,
                         supplierLeadTime: 7, 
+                        variantImageUrl:v.variantImageUrl,
                         warehouseLocation: v.location
                     }))
                 });
@@ -76,7 +77,7 @@ const ProductDetail = () => {
         const newStatus = !product.isActive; // Toggle current status
         try {
             // Call API to patch status (You created this endpoint earlier)
-            await axios.patch(`http://192.168.31.84:8080/api/catalog/status/${product.productId}?isActive=${newStatus}`);
+            await axios.patch(`http://localhost:8080/api/catalog/status/${product.productId}?isActive=${newStatus}`);
             
             // Update local UI immediately
             setProduct({...product, isActive: newStatus}); 
@@ -92,7 +93,7 @@ const ProductDetail = () => {
             // Use product.productId because 'id' from URL might be a Variant ID depending on logic
             // But usually detail page URL uses Parent ID or Variant ID. 
             // Based on your Controller, updateProduct uses Parent ID.
-            await axios.put(`http://192.168.31.84:8080/api/catalog/update/${product.productId}`, formData);
+            await axios.put(`http://localhost:8080/api/catalog/update/${product.productId}`, formData);
             alert("✅ Product Updated Successfully!");
             window.location.reload(); 
         } catch (error) {
@@ -109,7 +110,6 @@ const ProductDetail = () => {
              alert("Delete functionality coming soon for Detail Page.");
         }
     }
-
     // Helper for Images
     const getImageUrl = (path) => {
         if (!path) return "https://via.placeholder.com/150";

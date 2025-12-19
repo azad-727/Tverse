@@ -18,11 +18,23 @@ public class OrderController {
     private PicklistService picklistService;
 
     @PostMapping("/generate-picklist")
-    public ResponseEntity<?> generatePicklist(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> generatePicklist(@RequestParam("file") MultipartFile file,
+                                              @RequestParam(value="channel",defaultValue = "Unknown") String channel) {
         try {
-            List<PicklistResultDTO> result = picklistService.generatePicklist(file);
+            List<PicklistResultDTO> result = picklistService.generatePicklist(file,channel);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/picklist/{picklistId}")
+    public ResponseEntity<String> deleteBatch(@PathVariable String picklistId){
+        try {
+            String message= picklistService.deletePicklistBatch(picklistId);
+            return ResponseEntity.ok(message);
+
+        }catch(Exception e){
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }

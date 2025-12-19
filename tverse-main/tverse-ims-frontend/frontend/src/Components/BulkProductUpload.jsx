@@ -9,7 +9,7 @@ const BulkProductUpload = () => {
     // --- NEW: DOWNLOAD HANDLER ---
     const handleDownloadTemplate = () => {
         // This URL points directly to the file inside src/main/resources/static
-        const fileUrl = "http://192.168.31.84:8080/product_upload_template.xlsx";
+        const fileUrl = "http://localhost:8080/product_upload_template.xlsx";
         
         // Create a temporary hidden link and click it to trigger download
         const link = document.createElement('a');
@@ -37,7 +37,7 @@ const BulkProductUpload = () => {
         setStatus("uploading");
 
         try {
-            const response = await axios.post("http://192.168.31.84:8080/api/catalog/upload", formData, {
+            const response = await axios.post("http://localhost:8080/api/catalog/upload", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setStatus("success");

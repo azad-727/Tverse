@@ -54,10 +54,11 @@ public class ExcelUploadService {
                     String cat = getCellValue(row, 5);
                     if (!cat.isEmpty()) dto.setCategoryName(cat);
 
-                    dto.setHsnCode(getCellValue(row, 12));
-                    dto.setTaxRate(getNumericValue(row, 13));
-                    dto.setDescription(getCellValue(row, 14));
-                    dto.setImageUrl(getCellValue(row, 15));
+                    dto.setHsnCode(getCellValue(row, 15));
+                    dto.setTaxRate(getNumericValue(row, 16));
+                    dto.setDescription(getCellValue(row, 17));
+                    dto.setImageUrl(getCellValue(row, 18));
+                    dto.setMaterial(getCellValue(row,6));
 
                     if (dto.getVariants() == null) dto.setVariants(new ArrayList<>());
                 }
@@ -75,21 +76,24 @@ public class ExcelUploadService {
                         parentDto.setProductName(getCellValue(row, 3));
                         parentDto.setBrandName(getCellValue(row, 4));
                         parentDto.setCategoryName(getCellValue(row, 5));
-                        parentDto.setHsnCode(getCellValue(row, 12));
-                        parentDto.setTaxRate(getNumericValue(row, 13));
-                        parentDto.setDescription(getCellValue(row, 14));
-                        parentDto.setImageUrl(getCellValue(row, 15));
+                        parentDto.setHsnCode(getCellValue(row, 15));
+                        parentDto.setTaxRate(getNumericValue(row, 16));
+                        parentDto.setDescription(getCellValue(row, 17));
+                        parentDto.setImageUrl(getCellValue(row, 18));
                     }
 
                     // Create Variant
                     VariantDTO variant = new VariantDTO();
                     variant.setSku(sku);
-                    variant.setSize(getCellValue(row, 6));
-                    variant.setColor(getCellValue(row, 7));
-                    variant.setProcurementCost(getNumericValue(row, 8));
-                    variant.setSupplierLeadTime(getIntegerValue(row, 9));
-                    variant.setWarehouseLocation(getCellValue(row, 10));
-                    variant.setInitialStock(getIntegerValue(row, 11));
+                    variant.setSize(getCellValue(row, 7));
+                    variant.setSalePrice(getNumericValue(row,10));
+                    variant.setRegularPrice(getNumericValue(row,9));
+                    variant.setVariantImageUrl(getCellValue(row,19));
+                    variant.setColor(getCellValue(row, 8));
+                    variant.setProcurementCost(getNumericValue(row, 11));
+                    variant.setSupplierLeadTime(getIntegerValue(row, 12));
+                    variant.setWarehouseLocation(getCellValue(row, 13));
+                    variant.setInitialStock(getIntegerValue(row, 14));
 
                     parentDto.getVariants().add(variant);
                 }

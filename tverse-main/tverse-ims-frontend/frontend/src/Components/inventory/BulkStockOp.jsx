@@ -15,7 +15,7 @@ const BulkStockOp = () => {
         setMessage("");
 
         try {
-            const response = await axios.post("http://192.168.31.84:8080/api/inventory/bulk-adjust", formData, {
+            const response = await axios.post("http://localhost:8080/api/inventory/bulk-adjust", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setStatus("success");
@@ -27,7 +27,7 @@ const BulkStockOp = () => {
         }
     };
     const handleDownloadTemplate = ()=>{
-        const fileUrl="http://192.168.31.84:8080/BulkStock_UpdateFile.xlsx";
+        const fileUrl="http://localhost:8080/BulkStock_UpdateFile.xlsx";
         const link=document.createElement('a');
         link.href=fileUrl;
         link.setAttribute('download','T-verse_BulkStock_Update');

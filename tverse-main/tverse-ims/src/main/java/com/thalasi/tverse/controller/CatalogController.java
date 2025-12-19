@@ -129,6 +129,8 @@ public class CatalogController {
                 dto.setCategory(v.getProduct().getCategory() != null ? v.getProduct().getCategory().getName() : "-");
                 dto.setBrand(v.getProduct().getBrand() != null ? v.getProduct().getBrand().getName() : "-");
                 dto.setImageUrl(v.getProduct().getImageUrl());
+
+                dto.setVariantImageUrl(v.getVariantImageUrl());
             }
             return dto;
         }).collect(Collectors.toList());

@@ -10,9 +10,13 @@ public class ProductListingDTO {
     private String category;
     private String brand;
     private String imageUrl;
+    private String variantImageUrl;
 
     // Quick Edit Fields
     private BigDecimal costPrice;
+    private BigDecimal regularPrice;
+    private BigDecimal salePrice;
+    private boolean isActive;
     private int stock;
 
     // Details

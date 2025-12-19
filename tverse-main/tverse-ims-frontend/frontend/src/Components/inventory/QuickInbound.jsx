@@ -26,7 +26,7 @@ const QuickInbound = () => {
                 
                 // Let's assume we call the detail endpoint we made earlier, but we need Variant ID.
                 // We actually need a "Get By SKU" endpoint. Let's add that to backend next.
-                const res = await axios.get(`http://192.168.31.84:8080/api/catalog/search?sku=${skuInput}`);
+                const res = await axios.get(`http://localhost:8080/api/catalog/search?sku=${skuInput}`);
                 if(res.data) {
                     setScannedProduct(res.data);
                     setSkuInput(""); // Clear for quantity entry
@@ -51,7 +51,7 @@ const QuickInbound = () => {
                 performedBy: "ScannerUser"
             };
 
-            await axios.post("http://192.168.31.84:8080/api/inventory/adjust", payload);
+            await axios.post("http://localhost:8080/api/inventory/adjust", payload);
             
             // Add to local history log
             setHistory([{
