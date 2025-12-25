@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
@@ -32,4 +33,27 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     long countByOrderStatusIn(List<String> statuses);
 
     List<SalesOrder> findByOrderStatusOrderByDispatchByDateAsc(String status);
+    @Query("SELECT o FROM SalesOrder o WHERE o.orderId LIKE %:query% OR o.sku LIKE %:query% OR o.customerName LIKE %:query%")
+    List<SalesOrder> searchOrders(@Param("query") String query);
+
+    //---- Filtering with multiple options
+
+    @Query("SELECT o FROM SalesOrder o WHERE"+
+    "(:status IS NULL OR o.orderStatus =:status) AND "+
+    "(:channel IS NULL OR o.channel=:channel) AND"+
+    "(:fromDate IS NULL OR o.orderDate >=:fromDate) AND"+
+    "(:toDate IS NULL OR o.orderDate <=:toDate) AND"+
+    "(:dispatchDate IS NULL OR DATE(o.dispatchByDate) = DATE(:dispatchDate))")
+    List<SalesOrder> filterOrders(
+        @Param("status") String status,
+        @Param("channel") String channel,
+        @Param("fromDate") LocalDateTime fromDate,
+        @Param("toDate") LocalDateTime toDate,
+        @Param("dispatchDate") LocalDateTime dispatchDate
+    );
+
+
+    Optional<SalesOrder> findByTrackingId(String vCode);
+
+    Optional<SalesOrder> findByOrderItemId(String hCode);
 }

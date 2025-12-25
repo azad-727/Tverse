@@ -232,6 +232,7 @@ public class PicklistService {
                         order.setProductName(masterData.getProduct().getName());
                     }
 
+                    updateInventory(row.sku,row.qty,"RESERVED");
                 }
                 orderRepo.save(order);
                 savedCount++;
@@ -590,6 +591,23 @@ public class PicklistService {
             return ""; // Return empty string if index is out of bounds
         }
         return clean(cols[index]);
+    }
+    private void updateInventory(String sku,int qty,String action){
+        productVariant v = variantRepo.findBySku(sku).orElse(null);
+
+        if(v == null)return; //Skip if Sku not found
+
+        if(action.equals("RESERVE")){
+            v.setStockCommitted(v.getStockCommitted() + qty);
+        }
+        else if(action.equals("DEDUCT")){// Shipped
+            v.setStockOnHand(v.getStockOnHand()-qty);
+            v.setStockCommitted(v.getStockCommitted()-qty);
+        }
+        else if(action.equals("RELEASE")){// Cancel
+            v.setStockCommitted(v.getStockCommitted()-1);
+        }
+        variantRepo.save(v);
     }
 
 }

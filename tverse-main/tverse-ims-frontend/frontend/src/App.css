@@ -494,3 +494,195 @@ tr:hover .copy-icon { opacity: 1; }
   background: #e2e8f0;
 }
 .timeline-item:last-child::after { display: none; }
+/* =========================================
+   FLIPKART-STYLE FILTER BAR
+   ========================================= */
+
+.filter-bar-container {
+  background-color: #f0f2f5; /* Light Gray Background */
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap; /* Force single line */
+  overflow-x: auto; /* Scroll if screen too small */
+}
+
+/* The Funnel Icon Container */
+.filter-icon-box {
+  color: #878787;
+  padding-right: 10px;
+  border-right: 1px solid #d0d0d0;
+  display: flex;
+  align-items: center;
+}
+
+/* Compact Inputs (SaaS Style) */
+.compact-input, .compact-select {
+  height: 32px; /* Slim height */
+  font-size: 13px;
+  border: 1px solid #c2c2c2;
+  border-radius: 2px;
+  padding: 0 8px;
+  color: #333;
+  background: white;
+  min-width: 140px; /* Consistent width */
+}
+
+.compact-input:focus, .compact-select:focus {
+  border-color: var(--tverse-green);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(114, 193, 70, 0.1);
+}
+
+/* Date Range Group */
+.date-range-group {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #c2c2c2;
+  border-radius: 2px;
+  padding: 0 5px;
+  height: 32px;
+}
+
+.date-range-input {
+  border: none;
+  height: 30px;
+  font-size: 12px;
+  width: 110px;
+  outline: none;
+  color: #555;
+}
+
+.date-separator {
+  color: #999;
+  font-size: 12px;
+  margin: 0 5px;
+}
+
+/* Buttons */
+.btn-apply {
+  height: 32px;
+  background-color: white;
+  color: var(--tverse-green);
+  border: 1px solid var(--tverse-green);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 20px;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.btn-apply:hover {
+  background-color: var(--tverse-green);
+  color: white;
+}
+
+.btn-reset {
+  font-size: 13px;
+  color: #2874f0; /* Flipkart Blue style link */
+  text-decoration: none;
+  cursor: pointer;
+  margin-left: 5px;
+  font-weight: 500;
+}
+.btn-reset:hover { text-decoration: underline; }
+
+/* =========================================
+   SCAN & PACK - COMMAND CENTER THEME
+   ========================================= */
+
+/* The Background Grid (Like your reference image) */
+.scan-page-bg {
+  background-color: #0f1115;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px; /* Grid box size */
+  min-height: 100vh;
+  color: white;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The Central Hero Card */
+.scan-card {
+  background: #181b21;
+  border: 1px solid #2d333b;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Glowing Border Effect for Active State */
+.scan-card.active-glow {
+  border-color: var(--tverse-green);
+  box-shadow: 0 0 30px rgba(114, 193, 70, 0.15);
+}
+
+/* Big Input Fields */
+.scan-input {
+  background: #0f1115;
+  border: 2px solid #2d333b;
+  color: white;
+  font-size: 1.2rem;
+  padding: 15px 20px;
+  border-radius: 12px;
+  width: 100%;
+  font-family: 'Courier New', monospace;
+  transition: all 0.2s;
+}
+
+.scan-input:focus {
+  border-color: var(--tverse-green);
+  outline: none;
+  background: #13161c;
+  box-shadow: 0 0 0 4px rgba(114, 193, 70, 0.1);
+}
+
+/* Success/Error Overlay inside the card */
+.status-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 17, 21, 0.95);
+  z-index: 10;
+  animation: fadeIn 0.2s;
+}
+
+/* The "Recent Scans" Sidebar List */
+.scan-log-item {
+  background: #181b21;
+  border-left: 3px solid #2d333b;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  transition: transform 0.2s;
+}
+.scan-log-item.success { border-left-color: var(--tverse-green); }
+.scan-log-item:hover { transform: translateX(5px); background: #1f232b; }
+
+/* Custom Badge */
+.cyber-badge {
+  background: rgba(114, 193, 70, 0.1);
+  color: var(--tverse-green);
+  border: 1px solid rgba(114, 193, 70, 0.3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+}

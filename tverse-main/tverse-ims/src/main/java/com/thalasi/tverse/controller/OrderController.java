@@ -1,6 +1,7 @@
 package com.thalasi.tverse.controller;
 
 import com.thalasi.tverse.dto.PicklistResultDTO;
+import com.thalasi.tverse.model.SalesOrder;
 import com.thalasi.tverse.service.PicklistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -38,4 +39,5 @@ public class OrderController {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
+
 }

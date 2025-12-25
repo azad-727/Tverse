@@ -8,6 +8,9 @@ import ProductDetail from './Components/ProductDetail';//
 import InventoryMain from './Components/inventory/InventoryMain';
 import PicklistPage from './Components/PicklistPage';
 import OrderPage from './Components/order/OrderManagement';
+import CreateManualOrder from './Components/order/CreateManualOrder';
+import ScanPack from './Components/ScanPack';
+import DispatchLogs from './Components/DispatchLogs';
 function App() {
   return (
     <BrowserRouter>
@@ -21,7 +24,10 @@ function App() {
             <Route path="/stock-management" element={<InventoryMain />} />
             <Route path="/picklist" element={<div className="p-4"><PicklistPage /></div>} />
             <Route path="/orders" element={<div className="p-4"><OrderPage /></div>} />
+            <Route path="/orders/create" element={<CreateManualOrder/>}/>
+            <Route path="/dispatch/scan" element={<ScanPack />} />
             <Route path="/inventory/product/:id" element={<div className="p-4"><ProductDetail /></div>} />   
+            <Route path="/dispatch/logs" element={<DispatchLogs />} />       
         </Routes>
       </Layout>
     </BrowserRouter>

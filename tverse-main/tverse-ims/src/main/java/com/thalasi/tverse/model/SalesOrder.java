@@ -57,6 +57,7 @@ public class SalesOrder {
     private String manifestId;
     private LocalDateTime dispatchByDate;
     private LocalDateTime dispatchAfterDate;
+    private String courierPartner;
 
     // --- 6. CUSTOMER / DESTINATION ---
     private String customerName;
@@ -80,4 +81,5 @@ public class SalesOrder {
         if (this.orderStatus == null) this.orderStatus = "APPROVED";
         this.importedAt = LocalDateTime.now();
     }
+
 }
