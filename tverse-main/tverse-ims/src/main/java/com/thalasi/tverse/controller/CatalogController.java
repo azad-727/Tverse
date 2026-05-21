@@ -6,6 +6,7 @@ import com.thalasi.tverse.model.product;
 import com.thalasi.tverse.repository.categoryRepo;
 import com.thalasi.tverse.repository.inventorylogRepo;
 import com.thalasi.tverse.repository.productvariantRepo;
+import com.thalasi.tverse.service.AbcAnalysisService;
 import com.thalasi.tverse.service.catalogService;
 import com.thalasi.tverse.service.ExcelUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +37,8 @@ public class CatalogController {
     @Autowired private categoryRepo categoryRepo; // Added Repo
     @Autowired private productvariantRepo variantRepo; // Add this Repo
     @Autowired private inventorylogRepo logRepo;
-    @Autowired private productRepo productrepo; // Add this Repo
+    @Autowired private productRepo productrepo;
+    @Autowired private AbcAnalysisService abcService;
 
     //
     // --- 1. EXISTING ENDPOINTS ---
@@ -47,6 +49,16 @@ public class CatalogController {
             return ResponseEntity.ok("Product Created Successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/analytics/trigger-abc")
+    public ResponseEntity<String> manualAbcTrigger() {
+        try {
+            abcService.executeNightlyAbcAnalysis(); // Force-run the computation loop
+            return ResponseEntity.ok("✅ ABC Analysis Snapshot calculated and stored successfully!");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Trigger Failed: " + e.getMessage());
         }
     }
 

@@ -1,6 +1,7 @@
 package com.thalasi.tverse.repository;
 
 import com.thalasi.tverse.model.SalesOrder;
+import com.thalasi.tverse.projection.SkuRevenueProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -61,4 +62,11 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByOrderItemId(String hCode);
 
     List<SalesOrder> findByOrderId(String vCode);
+    @Query("SELECT s.sku AS sku, SUM(s.quantity * s.sellingPrice) AS totalRevenue " +
+            "FROM SalesOrder s " +
+            "WHERE s.orderStatus IN ('SHIPPED', 'DELIVERED') " + // Matches your entity's 'orderStatus'
+            "AND s.orderDate >= :startDate " +                    // Matches your entity's 'orderDate'
+            "GROUP BY s.sku " +
+            "ORDER BY totalRevenue DESC")
+    List<SkuRevenueProjection> findAggregatedRevenuePerSku(@Param("startDate") LocalDateTime startDate);
 }
