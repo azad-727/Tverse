@@ -39,6 +39,7 @@ public class CatalogController {
     @Autowired private inventorylogRepo logRepo;
     @Autowired private productRepo productrepo;
     @Autowired private AbcAnalysisService abcService;
+    @Autowired private StockoutPredictorService stockService;
     @Autowired private DashboardSnapshotRepository snapshotRepository;
     @Autowired private StockoutPredictorService stockoutService;
     // --- 1. EXISTING ENDPOINTS ---
@@ -69,6 +70,15 @@ public class CatalogController {
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
+        }
+    }
+    @GetMapping("/analytics/stockout")
+    public ResponseEntity<?> getTodaysStockoutPredictions(){
+        try{
+            List<DailyDashboardSnapshot> data = snapshotRepository.findBySnapshotDateAndMetricType(LocalDate.now(),"STOCKOUT_PREDICTOR");
+            return ResponseEntity.ok(data);
+        }catch (Exception e){
+            return ResponseEntity.internalServerError().body("Failed to load analytics: "+e.getMessage());
         }
     }
     @PostMapping("/analytics/trigger-stockout")

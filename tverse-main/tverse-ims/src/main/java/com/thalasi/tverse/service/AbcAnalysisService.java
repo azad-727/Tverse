@@ -35,7 +35,7 @@ public class AbcAnalysisService {
     // 3. Encapsulate execution inside a clear method
     public void executeNightlyAbcAnalysis() {
         // Look back far enough to catch your test data (e.g., 5 years or 30 days)
-        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
+        LocalDateTime startDate = LocalDateTime.now().minusDays(30);
 
         List<SkuRevenueProjection> sortedRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
 

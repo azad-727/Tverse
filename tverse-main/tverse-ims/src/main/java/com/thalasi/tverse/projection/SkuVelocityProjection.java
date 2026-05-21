@@ -1,6 +1,9 @@
 package com.thalasi.tverse.projection;
 
-public class SkuVelocityProjection {
+import org.springframework.stereotype.Service;
+
+@Service
+public interface SkuVelocityProjection {
     public String getSku();
     public Integer getTotalUnitsSold();
 }
