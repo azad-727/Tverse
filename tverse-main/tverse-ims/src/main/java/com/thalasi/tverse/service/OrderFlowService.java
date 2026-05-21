@@ -101,7 +101,18 @@ public class OrderFlowService {
         }
         orderRepo.saveAll(orders);
     }
+    @Transactional
+    public void deleteOrders(List<Long> orderIds){
+        List<SalesOrder> orders=orderRepo.findAllById(orderIds);
+        for(SalesOrder order:orders){
+            if(!"SHIPPED".equalsIgnoreCase(order.getOrderStatus()) &&
+               !"CANCELLED".equalsIgnoreCase(order.getOrderStatus())){
+            updateInventory(order.getSku(),order.getQuantity(),"RELEASE");
+            }
+            orderRepo.delete(order);
 
+        }
+    }
     @Transactional
     public void cancelOrders(List<Long> orderIds){
         List<SalesOrder> orders = orderRepo.findAllById(orderIds);

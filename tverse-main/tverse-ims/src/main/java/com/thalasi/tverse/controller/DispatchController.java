@@ -28,7 +28,7 @@ public class DispatchController {
     @PostMapping("/scan")
     public ResponseEntity<?> scanOrder(@RequestBody DailyDispatchDTO request){
         try{
-            SalesOrder scannedOrder=dispatchService.processScan(request);
+            List<SalesOrder> scannedOrder=dispatchService.processScan(request);
             return ResponseEntity.ok(scannedOrder);
 
         }catch(Exception e){

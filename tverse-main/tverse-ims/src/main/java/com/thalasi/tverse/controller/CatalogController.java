@@ -111,7 +111,7 @@ public class CatalogController {
     }
     @GetMapping("/list")
     public ResponseEntity<List<ProductListingDTO>> getAllListings() {
-        List<productVariant> variants = variantRepo.findAll();
+        List<productVariant> variants = variantRepo.findAllWithFullProduct();
 
         List<ProductListingDTO> dtos = variants.stream().map(v -> {
             ProductListingDTO dto = new ProductListingDTO();
@@ -213,20 +213,20 @@ public class CatalogController {
         }
     }
 
-    @GetMapping("/detail/{variantId}")
-    public ResponseEntity<?> getProductDetail(@PathVariable Long variantId) {
+    @GetMapping("/detail/{sku}")
+    public ResponseEntity<?> getProductDetail(@PathVariable String sku) {
         try {
-            // 1. Find the variant
-            productVariant variant = variantRepo.findById(variantId)
-                    .orElseThrow(() -> new RuntimeException("Variant not found"));
+            // 1. Find the variant (Ensure variantRepo.findBySkuWithProduct uses JOIN FETCH to avoid N+1)
+            productVariant variant = variantRepo.findBySkuWithFullProduct(sku)
+                    .orElseThrow(() -> new RuntimeException("Variant not found for SKU: " + sku));
 
             // 2. Get the Parent Product
             product parent = variant.getProduct();
 
-            // 3. Get ALL variants for this parent (Siblings)
+            // 3. Get ALL sibling variants for this parent
             List<productVariant> allVariants = variantRepo.findByProduct_id(parent.getId());
 
-            // 4. Construct a Composite Response (Manual JSON map)
+            // 4. Construct a Composite Response (Excellent pattern for avoiding infinite JSON recursion)
             Map<String, Object> response = new HashMap<>();
 
             // Parent Data
@@ -238,6 +238,7 @@ public class CatalogController {
             response.put("hsnCode", parent.getHsnCode());
             response.put("taxRate", parent.getTaxRate());
             response.put("imageUrl", parent.getImageUrl());
+            response.put("isActive", parent.isActive()); // ADDED: React defaults this to true if missing, better to supply it
 
             // Variants Data
             List<Map<String, Object>> variantList = allVariants.stream().map(v -> {
@@ -249,6 +250,7 @@ public class CatalogController {
                 map.put("cost", v.getProcurementCost());
                 map.put("stock", v.getStockOnHand());
                 map.put("location", v.getWarehouseLocation());
+                map.put("variantImageUrl", v.getVariantImageUrl()); // FIX: Added to match React frontend mapping
                 return map;
             }).collect(Collectors.toList());
 
@@ -257,6 +259,7 @@ public class CatalogController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
+            // In production, consider logging this stack trace using SLF4J (e.g., log.error("Error fetching SKU", e))
             return ResponseEntity.status(404).body("Error: " + e.getMessage());
         }
     }

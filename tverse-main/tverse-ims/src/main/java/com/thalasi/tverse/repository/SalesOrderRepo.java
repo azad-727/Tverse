@@ -51,9 +51,14 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
         @Param("toDate") LocalDateTime toDate,
         @Param("dispatchDate") LocalDateTime dispatchDate
     );
+//    @Query("SELECT i.sku, SUM(i.sellingPrice * i.quantity) " +
+//            "FROM SalesOrderItem i " +
+//            "GROUP BY i.sku " +
+//            "ORDER BY SUM(i.sellingPrice * i.quantity) DESC")
+//    List<Object[]> getSalesBySku();
+    List<SalesOrder> findByTrackingId(String vCode);
 
+    List<SalesOrder> findByOrderItemId(String hCode);
 
-    Optional<SalesOrder> findByTrackingId(String vCode);
-
-    Optional<SalesOrder> findByOrderItemId(String hCode);
+    List<SalesOrder> findByOrderId(String vCode);
 }

@@ -14,7 +14,7 @@ public class DailyDispatch {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    private long orderId;
+    private String orderId;
     private String sku;
     private String staffName;
     private String channel;

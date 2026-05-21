@@ -35,6 +35,7 @@ public class OrderFlowController {
     public ResponseEntity<Map<String,Long>> getOrderCounts(){
         Map<String,Long> stats=new HashMap<>();
         stats.put("approved",salesOrderRepo.countByOrderStatus("APPROVED"));
+        stats.put("packing_in_progress",salesOrderRepo.countByOrderStatus("PACKING_IN_PROGRESS"));
         stats.put("packed",salesOrderRepo.countByOrderStatus("PACKED"));
         stats.put("dispatch_ready",salesOrderRepo.countByOrderStatus("DISPATCH_READY"));
         stats.put("shipped",salesOrderRepo.countByOrderStatus("SHIPPED"));
@@ -113,6 +114,21 @@ public class OrderFlowController {
             return ResponseEntity.ok().body("Orders Cancelled");
         }catch(Exception e){
             return ResponseEntity.internalServerError().body("Errors:"+ e.getMessage());
+        }
+    }
+    @PostMapping("/delete")
+    public ResponseEntity<String> deleteOrders(@RequestBody Map<String,List<Long>> payload){
+        List<Long> orderIds=payload.get("ids");
+
+        if(orderIds==null||orderIds.isEmpty()){
+            return ResponseEntity.badRequest().body("No orders selected");
+        }
+
+        try{
+            orderFlowService.deleteOrders(orderIds);
+            return ResponseEntity.ok("Orders Deleted and Inventory Reverted");
+        }catch(Exception e){
+            return ResponseEntity.internalServerError().body("Delete Failed:"+e.getMessage());
         }
     }
     @PostMapping("/on-hold")

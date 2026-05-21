@@ -22,7 +22,7 @@ public class productVariant {
     private String sku;
 
     // Link back to Parent Product
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private product product;
 
