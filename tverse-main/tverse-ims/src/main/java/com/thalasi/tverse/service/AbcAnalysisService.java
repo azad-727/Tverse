@@ -30,7 +30,7 @@ public class AbcAnalysisService {
         System.out.println("CRON TASK TRIGGERED: Starting nightly ABC analysis...");
         this.executeNightlyAbcAnalysis();
         System.out.println("CRON TASK COMPLETE: ABC analysis stored successfully.");
-    }git
+    }
 
     // 3. Encapsulate execution inside a clear method
     public void executeNightlyAbcAnalysis() {

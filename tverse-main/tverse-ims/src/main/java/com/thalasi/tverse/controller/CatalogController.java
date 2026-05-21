@@ -1,11 +1,10 @@
 package com.thalasi.tverse.controller;
 
 import com.thalasi.tverse.dto.productRequestDTO;
+import com.thalasi.tverse.model.DailyDashboardSnapshot;
 import com.thalasi.tverse.model.category;
 import com.thalasi.tverse.model.product;
-import com.thalasi.tverse.repository.categoryRepo;
-import com.thalasi.tverse.repository.inventorylogRepo;
-import com.thalasi.tverse.repository.productvariantRepo;
+import com.thalasi.tverse.repository.*;
 import com.thalasi.tverse.service.AbcAnalysisService;
 import com.thalasi.tverse.service.catalogService;
 import com.thalasi.tverse.service.ExcelUploadService;
@@ -16,9 +15,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 import com.thalasi.tverse.dto.ProductListingDTO;
 import com.thalasi.tverse.model.productVariant;
-import com.thalasi.tverse.repository.productRepo;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.io.IOException;
@@ -39,7 +38,7 @@ public class CatalogController {
     @Autowired private inventorylogRepo logRepo;
     @Autowired private productRepo productrepo;
     @Autowired private AbcAnalysisService abcService;
-
+    @Autowired private DashboardSnapshotRepository snapshotRepository;
     //
     // --- 1. EXISTING ENDPOINTS ---
     @PostMapping("/add")
@@ -59,6 +58,16 @@ public class CatalogController {
             return ResponseEntity.ok("✅ ABC Analysis Snapshot calculated and stored successfully!");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Trigger Failed: " + e.getMessage());
+        }
+    }
+    @GetMapping("/analytics/abc")
+    public ResponseEntity<?> getTodaysAbcAnalysis() {
+        try {
+            // Fetch the snapshot for today
+            List<DailyDashboardSnapshot> data = snapshotRepository.findBySnapshotDateAndMetricType(LocalDate.now(), "ABC_ANALYSIS");
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
         }
     }
 
