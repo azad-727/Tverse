@@ -599,8 +599,8 @@ tr:hover .copy-icon { opacity: 1; }
 .scan-page-bg {
   background-color: #0f1115;
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 2px);
   background-size: 40px 40px; /* Grid box size */
   min-height: 100vh;
   color: white;
@@ -686,3 +686,358 @@ tr:hover .copy-icon { opacity: 1; }
   text-transform: uppercase;
   font-weight: 600;
 }
+
+/* =========================================
+   RMA STATION THEME (Dark Mode)
+   ========================================= */
+
+/* The Product "Hologram" Card */
+.rma-product-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
+
+/* QC Selection Tiles (Buttons) */
+.qc-tile {
+  background: #181b21;
+  border: 1px solid #333;
+  color: #a0aec0;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+}
+
+.qc-tile:hover {
+  background: #222;
+  border-color: #555;
+  color: white;
+}
+
+.qc-tile.active {
+  background: rgba(114, 193, 70, 0.1);
+  border-color: var(--tverse-green);
+  color: var(--tverse-green);
+  box-shadow: 0 0 15px rgba(114, 193, 70, 0.2);
+}
+
+.qc-tile.danger.active {
+  background: rgba(220, 53, 69, 0.1);
+  border-color: #dc3545;
+  color: #dc3545;
+  box-shadow: 0 0 15px rgba(220, 53, 69, 0.2);
+}
+
+/* Step Progress Bar */
+.rma-step-indicator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  position: relative;
+}
+.rma-step-indicator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #333;
+  z-index: 0;
+}
+.rma-step {
+  width: 30px;
+  height: 30px;
+  background: #111;
+  border: 2px solid #555;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  font-weight: bold;
+  font-size: 12px;
+  color: #555;
+  transition: all 0.3s;
+}
+.rma-step.active {
+  border-color: var(--tverse-green);
+  background: var(--tverse-green);
+  color: black;
+  box-shadow: 0 0 10px var(--tverse-green);
+}
+/* --- INTELLIGENT RMA STYLES --- */
+
+/* The "Data HUD" on the left */
+.rma-hud-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+  background: rgba(0,0,0,0.2);
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.rma-data-point label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #718096;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.rma-data-point span {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+/* Intelligent Status Badges */
+.smart-badge {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.smart-badge.valid {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid #10b981;
+}
+.smart-badge.expired {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+/* Navigation Buttons */
+.nav-btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.nav-btn {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid #555;
+  color: #aaa;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.nav-btn:hover { background: #333; color: white; }
+
+/* Manufacuting Theme*/
+/* =========================================
+   MANUFACTURING PRO THEME (SaaS Style)
+   ========================================= */
+
+/* 1. Manufacturing Card */
+.mfg-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.mfg-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  border-color: var(--tverse-green);
+}
+
+/* 2. Fabric Status Indicator */
+.stock-indicator-bar {
+  height: 6px;
+  width: 100%;
+  background: #f1f3f5;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.stock-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+.stock-fill.high { background-color: var(--tverse-green); }
+.stock-fill.medium { background-color: #ffc107; }
+.stock-fill.low { background-color: #dc3545; }
+
+/* 3. Production Stepper (The Timeline) */
+.lot-stepper {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+  position: relative;
+}
+.lot-stepper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #e9ecef;
+  z-index: 0;
+  transform: translateY(-50%);
+}
+
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e9ecef;
+  z-index: 1;
+  border: 2px solid white;
+  transition: all 0.3s;
+}
+.step-dot.completed {
+  background: var(--tverse-green);
+  box-shadow: 0 0 0 2px rgba(114, 193, 70, 0.2);
+}
+.step-dot.active {
+  background: white;
+  border: 3px solid var(--tverse-green);
+  width: 16px;
+  height: 16px;
+}
+
+/* 4. Size Grid (Clean) */
+.size-box {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 4px 8px;
+  text-align: center;
+  min-width: 45px;
+}
+.size-label { font-size: 10px; color: #6c757d; text-transform: uppercase; font-weight: 700; }
+.size-val { font-size: 14px; font-weight: 700; color: #212529; }
+.size-rej { font-size: 10px; color: #dc3545; font-weight: 600; }
+
+/* 5. Header Badge */
+.lot-id-badge {
+  background: #ebfbee;
+  color: #2b8a3e;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-weight: 600;
+  border: 1px solid #d3f9d8;
+}
+/* =========================================
+   ENTERPRISE MANUFACTURING TABLE
+   ========================================= */
+
+/* The Main Table Container */
+.pro-table-container {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+
+.pro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pro-table thead tr {
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.pro-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.pro-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.15s;
+}
+
+.pro-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.pro-table td {
+  padding: 12px 16px;
+  color: #1f2937;
+  vertical-align: middle;
+}
+
+/* Status Pills (Pipeline Stages) */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.status-pill.new { background: #e0f2fe; color: #0369a1; }
+.status-pill.cutting { background: #fef3c7; color: #b45309; }
+.status-pill.stitching { background: #dcfce7; color: #15803d; }
+.status-pill.finishing { background: #f3e8ff; color: #7e22ce; }
+.status-pill.completed { background: #111827; color: #fff; }
+
+/* The "File Folder" Drawer */
+.lot-file-header {
+  background: #f3f4f6;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.lot-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+}
+.stat-box label { display: block; font-size: 10px; color: #6b7280; text-transform: uppercase; font-weight: 700; }
+.stat-box span { font-size: 16px; font-weight: 700; color: #111827; }
+
+/* Size Matrix Table inside Drawer */
+.matrix-table {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.matrix-table th { background: #f9fafb; padding: 8px; font-size: 11px; border-bottom: 1px solid #e5e7eb; }
+.matrix-table td { padding: 8px; font-size: 13px; text-align: center; border-bottom: 1px solid #eee; }

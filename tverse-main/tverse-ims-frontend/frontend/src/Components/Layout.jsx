@@ -46,15 +46,33 @@ const Layout = ({ children }) => {
                     <Link to="/orders" className={`sidebar-link text-decoration-none ${isActive('/orders')}`} onClick={() => setIsSidebarOpen(false)}>
                         <i className="bi bi-cart me-3 fs-5"></i> Orders
                     </Link>
-                    <Link to="/customers" className={`sidebar-link text-decoration-none ${isActive('/customers')}`} onClick={() => setIsSidebarOpen(false)}>
+                    {/* <Link to="/customers" className={`sidebar-link text-decoration-none ${isActive('/customers')}`} onClick={() => setIsSidebarOpen(false)}>
                         <i className="bi bi-people me-3 fs-5"></i> Customers
-                    </Link>
+                    </Link>*/}
                     <Link to="/analytics" className={`sidebar-link text-decoration-none ${isActive('/analytics')}`} onClick={() => setIsSidebarOpen(false)}>
-                        <i className="bi bi-graph-up me-3 fs-5"></i> Analytics
+                        <i className="bi bi-graph-up me-3 fs-5"></i> Analytics & BI
+                    </Link> 
+                    <Link to="/returns/inward" className={`sidebar-link text-decoration-none ${isActive('/returns/inward')}`}>
+                        <i className="bi bi-arrow-counterclockwise me-3 fs-5"></i> Returns (RMA)
                     </Link>
+                    <Link to="/manufacturing" className={`sidebar-link text-decoration-none ${isActive('/manufacturing')}`}>
+                        <i className="bi bi-scissors me-3 fs-5"></i> Manufacturing
+                    </Link>
+                    <Link to="/attendance" className={`sidebar-link text-decoration-none ${isActive('/attendance')}`}>
+                        <i className="bi bi-clock-history me-3 fs-5"></i> Attendance
+                    </Link>
+                    <Link to="/inventory/mapping" className={`sidebar-link text-decoration-none ${isActive('/attendance')}`}>
+                    <i className="bi bi-shop-window me-3 fs-5"></i>Channels
+                    </Link>
+                    
+                    <Link to="/hr/staff" className={`sidebar-link text-decoration-none ${isActive('/hr/staff')}`}>
+                     <i className="bi bi-people-fill me-2 fs-5"></i> HR & Payroll </Link>
+                     
                     <Link to="/picklist" className={`sidebar-link text-decoration-none ${isActive('/picklist')}`} onClick={() => setIsSidebarOpen(false)}>
                         <i className="bi bi-clipboard-check me-3 fs-5"></i> Picklist
                     </Link>
+               
+                
                 </div>
             </div>
 

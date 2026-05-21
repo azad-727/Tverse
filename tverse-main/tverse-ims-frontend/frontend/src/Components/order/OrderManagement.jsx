@@ -12,7 +12,7 @@ const OrderManagement = () => {
         channel:"",
         sku:"",
     })
-    const [stats,setStats] = useState({approved:0,new:0,packed:0,dispatch_ready:0,shipped:0,on_hold:0});
+    const [stats,setStats] = useState({approved:0,new:0,packing_in_progress:0,dispatch_ready:0,shipped:0,on_hold:0});
     // --- NEW: DRAWER STATE ---
     const [quickViewOrder, setQuickViewOrder] = useState(null); // Stores the order object to show in drawer
     const [searchTerm ,setSearchTerm] = useState("");
@@ -89,7 +89,6 @@ const OrderManagement = () => {
         setFilters({ fromDate: "", toDate: "", channel: "", sku: "" });
         fetchOrders(); // Reload original list
     };
-
     // ---- Search Feature useEffect
 
     useEffect(()=>{
@@ -396,8 +395,8 @@ const OrderManagement = () => {
             <div className="row g-4 mb-5">
                 {[
                     { label: "Pending Labels", val:stats.approved, icon: "bi-tags", color: "text-primary" },
-                    { label: "Pending RTD", val: stats.dispatch_ready, icon: "bi-box-seam", color: "text-warning" },
-                    { label: "Handover Pending", val: stats.packed, icon: "bi-truck", color: "text-info" },
+                    { label: "Pending RTD", val: stats.packing_in_progress, icon: "bi-box-seam", color: "text-warning" },
+                    { label: "Handover Pending", val: stats.dispatch_ready, icon: "bi-truck", color: "text-info" },
                     { label: "In Transit", val: stats.shipped, icon: "bi-map", color: "text-success" },
                     { label: "Completed", val: stats.delivered, icon: "bi-map", color: "text-success" },
                 ].map((stat, idx) => (
@@ -559,6 +558,14 @@ const OrderManagement = () => {
                     <button className="dock-btn" title="Download Invoices"><i className="bi bi-file-earmark-pdf fs-5"></i></button>
                     <button className="dock-btn" title="Hold Shipment" onClick={()=>handleAction('on-hold')}><i className="bi bi-pause-circle fs-5"></i></button>
                     <button className="dock-btn text-danger" title="Cancel Orders" onClick={()=> window.confirm("Are you sure ?")?handleAction('cancel'):""}><i className="bi bi-x-circle fs-5"></i></button>
+                    <button className="dock-btn text-danger" title="Permanently Delete"
+                    onClick={() => {
+                            if(window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} orders?\n\nThis will revert inventory stock.`)) {
+                                handleAction('delete');}
+                            }}>
+                            <i className="bi bi-trash3-fill fs-5"></i>
+                            </button>
+
                     <div className="dock-divider"></div>
                     <button className="dock-btn dock-btn-primary" onClick={() => handleAction(currentAction.endpoint)}><i className={`bi ${currentAction.icon}`}></i>{currentAction.label}</button>
                     <button className="dock-btn ms-3 text-white" onClick={() => setSelectedIds([])}><i className="bi bi-x-lg"></i></button>

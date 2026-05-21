@@ -123,7 +123,7 @@ const ProductList = () => {
                                 <tr key={p.variantId}>
     {/* Image Link */}
     <td>
-        <Link to={`/inventory/product/${p.variantId}`}>
+        <Link to={`/inventory/product/${p.sku}`}>
             <div className="bg-light rounded d-flex align-items-center justify-content-center border overflow-hidden" style={{width: 50, height: 50}}>
                 {p.variantImageUrl ? (
                     <img 
@@ -139,7 +139,7 @@ const ProductList = () => {
 
                                     {/* Product Name & SKU */}
                                     <td>
-        <Link to={`/inventory/product/${p.variantId}`} className="text-decoration-none text-dark">
+        <Link to={`/inventory/product/${p.sku}`} className="text-decoration-none text-dark">
             <div className="fw-bold">{p.productName}</div>
             <div className="small text-muted">SKU: <span className="text-primary">{p.sku}</span></div>
         </Link>

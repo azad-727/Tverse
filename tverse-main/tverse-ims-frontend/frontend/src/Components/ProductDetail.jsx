@@ -21,7 +21,8 @@ const ProductDetail = () => {
     }, [id]);
 
     const loadData = () => {
-        axios.get(`http://192.168.31.84:8080/api/catalog/detail/${id}`)
+        console.log("REACT IS TRYING TO FETCH URL ID:", id);
+        axios.get(`http://localhost:8080/api/catalog/detail/${id}`)
             .then(res => {
                 setProduct(res.data);
                 
@@ -114,7 +115,7 @@ const ProductDetail = () => {
     const getImageUrl = (path) => {
         if (!path) return "https://via.placeholder.com/150";
         if (path.startsWith("http")) return path;
-        return `http://192.168.31.84:8080/${path}`;
+        return `http://localhost:8080/${path}`;
     };
 
     if (loading) return <div className="p-5 text-center"><span className="spinner-border text-success"></span> Loading...</div>;

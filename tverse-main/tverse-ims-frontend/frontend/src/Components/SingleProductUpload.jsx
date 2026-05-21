@@ -36,7 +36,7 @@ const SingleProductAdd = () => {
     }, []);
 
     const loadCategories = () => {
-        axios.get("http://192.168.31.84:8080/api/catalog/categories")
+        axios.get("http://localhost:8080/api/catalog/categories")
             .then(response => {
                 setCategoryList(response.data);
             })
@@ -53,7 +53,7 @@ const SingleProductAdd = () => {
         if(!newCategoryName.trim()) return;
 
         try {
-            const res = await axios.post("http://192.168.31.84:8080/api/catalog/category/add", { name: newCategoryName });
+            const res = await axios.post("http://localhost:8080/api/catalog/category/add", { name: newCategoryName });
             
             // 1. Refresh List
             const updatedList = [...categoryList, res.data];
@@ -78,7 +78,7 @@ const SingleProductAdd = () => {
             const uploadData = new FormData();
             uploadData.append("file", file);
             try {
-                const res = await axios.post("http://192.168.31.84:8080/api/catalog/upload-image", uploadData, {
+                const res = await axios.post("http://localhost:8080/api/catalog/upload-image", uploadData, {
                     headers: { "Content-Type": "multipart/form-data" }
                 });
                 setUploadedImageUrl(res.data);
@@ -143,7 +143,7 @@ const finalImage = uploadedImageUrl || "";
         };
  console.log("Sending Payload:", payload);
         try {
-            await axios.post("http://192.168.31.84:8080/api/catalog/add", payload);
+            await axios.post("http://localhost:8080/api/catalog/add", payload);
             setStatus("success");
             setMessage("Product Created Successfully!");
         } catch (error) {

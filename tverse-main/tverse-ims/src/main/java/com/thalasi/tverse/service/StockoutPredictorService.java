@@ -71,8 +71,8 @@ public class StockoutPredictorService {
             }
 
             // 5. Package as JSON String to hold both the Days and the Status
-            String metricValueJson = String.format("{\"doi\": %d, \"status\": \"%s\", \"velocity\": %.1f}",
-                    daysOfInventory, alertStatus, dailyVelocity);
+            String metricValueJson = String.format("{\"doi\": %d, \"status\": \"%s\", \"velocity\": %.1f,\"unitsSold\":%1.f}",
+                    daysOfInventory, alertStatus, dailyVelocity,unitsSold);
 
             DailyDashboardSnapshot snapshot = new DailyDashboardSnapshot();
             snapshot.setSnapshotDate(LocalDate.now());

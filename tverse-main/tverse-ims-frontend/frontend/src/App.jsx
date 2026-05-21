@@ -9,8 +9,16 @@ import InventoryMain from './Components/inventory/InventoryMain';
 import PicklistPage from './Components/PicklistPage';
 import OrderPage from './Components/order/OrderManagement';
 import CreateManualOrder from './Components/order/CreateManualOrder';
+import ReturnsInward from './Components/ReturnsInward';
 import ScanPack from './Components/ScanPack';
+import ReturnLogs from './Components/ReturnLog';
+import StaffManager from './Components/StaffManager';
 import DispatchLogs from './Components/DispatchLogs';
+import ManufacturingMain from './Components/manufacturing/ManufacturingMain';
+import InventoryMapping from './Components/ChannelMapping';
+import AbcDashboard from './Components/analytics/AbcDashboard';
+import AnalyticsMain from './Components/analytics/AnalyticsMain';
+import AttendanceKiosk from './Components/AttendanceKiosk';
 function App() {
   return (
     <BrowserRouter>
@@ -26,8 +34,15 @@ function App() {
             <Route path="/orders" element={<div className="p-4"><OrderPage /></div>} />
             <Route path="/orders/create" element={<CreateManualOrder/>}/>
             <Route path="/dispatch/scan" element={<ScanPack />} />
-            <Route path="/inventory/product/:id" element={<div className="p-4"><ProductDetail /></div>} />   
-            <Route path="/dispatch/logs" element={<DispatchLogs />} />       
+            <Route path="/inventory/product/:id" element={<ProductDetail />} />
+            <Route path="/manufacturing" element={<ManufacturingMain />} />
+            <Route path="/inventory/mapping" element={<InventoryMapping />}/>
+            <Route path="/returns/inward" element={<ReturnsInward />} />
+            <Route path="/hr/staff" element={<StaffManager />} />
+            <Route path="/attendance" element={<AttendanceKiosk />} />
+            <Route path="returns/logs" element={<ReturnLogs />}/>
+            <Route path="/dispatch/logs" element={<DispatchLogs />} /> 
+            <Route path="/analytics" element={<AnalyticsMain />} />     
         </Routes>
       </Layout>
     </BrowserRouter>

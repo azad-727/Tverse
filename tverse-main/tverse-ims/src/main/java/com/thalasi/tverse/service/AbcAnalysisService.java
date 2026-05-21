@@ -9,16 +9,17 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode; // CRITICAL: Missing Import resolved
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@Service // 1. Enforce Component Scanning
+@Service
 public class AbcAnalysisService {
 
-    // 2. Inject your dependencies cleanly
     @Autowired
     private SalesOrderRepo salesOrderRepo;
 
@@ -29,12 +30,83 @@ public class AbcAnalysisService {
     public void scheduleNightlyAnalysis() {
         System.out.println("CRON TASK TRIGGERED: Starting nightly ABC analysis...");
         this.executeNightlyAbcAnalysis();
+        this.executeNightlyParentAbcAnalysis(); // Added this so both run!
         System.out.println("CRON TASK COMPLETE: ABC analysis stored successfully.");
     }
 
-    // 3. Encapsulate execution inside a clear method
+    public void executeNightlyParentAbcAnalysis() {
+        // Use minusYears(5) if you are still testing with old data!
+        LocalDateTime startDate = LocalDateTime.now().minusDays(30);
+
+        List<SkuRevenueProjection> childRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
+        if (childRevenues == null || childRevenues.isEmpty()) return;
+
+        // PHASE 1: Grouping and Merging
+        Map<String, BigDecimal> parentRevenueMap = new HashMap<>();
+        BigDecimal grandTotal = BigDecimal.ZERO;
+
+        for (SkuRevenueProjection projection : childRevenues) {
+            String childSku = projection.getSku();
+            if (childSku == null || projection.getTotalRevenue() == null) continue;
+
+            String parentSku = extractParentSku(childSku);
+            parentRevenueMap.merge(parentSku, projection.getTotalRevenue(), BigDecimal::add);
+
+            grandTotal = grandTotal.add(projection.getTotalRevenue());
+        } // <-- The first loop MUST close here!
+
+        // PHASE 2: Sorting
+        List<Map.Entry<String, BigDecimal>> sortedParents = parentRevenueMap.entrySet().stream()
+                .sorted(Map.Entry.<String, BigDecimal>comparingByValue().reversed())
+                .toList();
+
+        // PHASE 3: ABC Categorization
+        BigDecimal runningTotal = BigDecimal.ZERO;
+        List<DailyDashboardSnapshot> snapshotsToSave = new ArrayList<>(); // Initialized the list
+
+        for (Map.Entry<String, BigDecimal> input : sortedParents) {
+
+            if (input.getValue() == null || input.getKey() == null) {
+                continue;
+            }
+
+            runningTotal = runningTotal.add(input.getValue());
+
+            double cumulativePercentage = runningTotal.divide(grandTotal, 4, RoundingMode.HALF_UP)
+                    .doubleValue() * 100;
+
+            // FIXED: Use input.getValue() instead of projection.getTotalRevenue()
+            double contributionPct = input.getValue()
+                    .divide(grandTotal, 4, RoundingMode.HALF_UP)
+                    .doubleValue() * 100;
+
+            String category;
+            if (cumulativePercentage <= 80.0) {
+                category = "A";
+            } else if (cumulativePercentage <= 95.0) {
+                category = "B";
+            } else {
+                category = "C";
+            }
+
+            // FIXED: Use input.getValue() for the JSON string
+            String metricValueJson = String.format("{\"category\": \"%s\", \"revenue\": %.2f, \"contributionPct\": %.2f}",
+                    category, input.getValue(), contributionPct);
+
+            DailyDashboardSnapshot snapshot = new DailyDashboardSnapshot();
+            snapshot.setSnapshotDate(LocalDate.now());
+            snapshot.setMetricType("PARENT_ABC_ANALYSIS"); // Changed to distinguish from child
+            snapshot.setMetricKey(input.getKey()); // Use input.getKey() for parent SKU
+            snapshot.setMetricValue(metricValueJson);
+
+            snapshotsToSave.add(snapshot);
+        }
+
+        snapshotRepository.saveAll(snapshotsToSave);
+    }
+
     public void executeNightlyAbcAnalysis() {
-        // Look back far enough to catch your test data (e.g., 5 years or 30 days)
+        // ... (Your child ABC code is perfect and remains completely unchanged) ...
         LocalDateTime startDate = LocalDateTime.now().minusDays(30);
 
         List<SkuRevenueProjection> sortedRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
@@ -43,7 +115,6 @@ public class AbcAnalysisService {
             return;
         }
 
-        // FIX 1: Added .filter(p -> p.getTotalRevenue() != null) to protect the stream
         BigDecimal grandTotal = sortedRevenues.stream()
                 .map(SkuRevenueProjection::getTotalRevenue)
                 .filter(revenue -> revenue != null)
@@ -57,7 +128,6 @@ public class AbcAnalysisService {
         List<DailyDashboardSnapshot> snapshotsToSave = new ArrayList<>();
 
         for (SkuRevenueProjection projection : sortedRevenues) {
-            // FIX 2: Skip this row if the calculated revenue happens to be null
             if (projection.getTotalRevenue() == null || projection.getSku() == null) {
                 continue;
             }
@@ -65,6 +135,10 @@ public class AbcAnalysisService {
             runningTotal = runningTotal.add(projection.getTotalRevenue());
 
             double cumulativePercentage = runningTotal.divide(grandTotal, 4, RoundingMode.HALF_UP)
+                    .doubleValue() * 100;
+
+            double contributionPct = projection.getTotalRevenue()
+                    .divide(grandTotal, 4, RoundingMode.HALF_UP)
                     .doubleValue() * 100;
 
             String category;
@@ -76,15 +150,32 @@ public class AbcAnalysisService {
                 category = "C";
             }
 
+            String metricValueJson = String.format("{\"category\": \"%s\", \"revenue\": %.2f, \"contributionPct\": %.2f}",
+                    category, projection.getTotalRevenue(), contributionPct);
+
             DailyDashboardSnapshot snapshot = new DailyDashboardSnapshot();
             snapshot.setSnapshotDate(LocalDate.now());
             snapshot.setMetricType("ABC_ANALYSIS");
             snapshot.setMetricKey(projection.getSku());
-            snapshot.setMetricValue(category);
+            snapshot.setMetricValue(metricValueJson);
 
             snapshotsToSave.add(snapshot);
         }
 
         snapshotRepository.saveAll(snapshotsToSave);
+    }
+
+    /**
+     * Helper method to extract the parent SKU design name.
+     * Example: converts "TTS_661_ANIME_BLACK_S" to "TTS_661_ANIME"
+     */
+    private String extractParentSku(String childSku) {
+        String[] parts = childSku.split("_");
+        // If the SKU follows the standard 3-part parent naming convention
+        if (parts.length >= 3) {
+            return parts[0] + "_" + parts[1] + "_" + parts[2];
+        }
+        // Fallback just in case a SKU is formatted differently
+        return childSku;
     }
 }

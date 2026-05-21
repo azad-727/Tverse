@@ -15,14 +15,14 @@ const ScanPack = () => {
     // Scan State
     const [barcodes, setBarcodes] = useState({ vCode: "", hCode: "" });
     const [lastOrder, setLastOrder] = useState(null); 
-    const [scanStatus, setScanStatus] = useState("IDLE"); // IDLE, LOADING, SUCCESS, ERROR
+    const [scanStatus, setScanStatus] = useState("IDLE"); 
     const [errorMessage, setErrorMessage] = useState("");
     const [scanHistory, setScanHistory] = useState([]); 
 
     const vInputRef = useRef(null);
     const hInputRef = useRef(null);
 
-    // --- LOGIC (Kept same as before) ---
+    // --- LOGIC ---
     useEffect(() => { loadOptions(); }, []);
 
     const loadOptions = async () => {
@@ -58,6 +58,7 @@ const ScanPack = () => {
     const startSession = () => {
         if(!session.staffName || !session.channel) return alert("Please fill all details");
         setIsSessionActive(true);
+        // Force focus on start
         setTimeout(() => vInputRef.current?.focus(), 100);
     };
 
@@ -68,44 +69,59 @@ const ScanPack = () => {
         }
     };
 
+    // --- AUTO RESET HELPER ---
+    const triggerAutoReset = (delay) => {
+        setTimeout(() => {
+            setScanStatus("IDLE");
+            setBarcodes({ vCode: "", hCode: "" });
+            // CRITICAL: Force focus back to start so scanner works immediately
+            setTimeout(() => vInputRef.current?.focus(), 50); 
+        }, delay);
+    };
+
     const submitScan = async () => {
         if (!barcodes.vCode || !barcodes.hCode) return;
+        
         setScanStatus("LOADING");
         const payload = { ...session, verticalBarcode: barcodes.vCode, horizontalBarcode: barcodes.hCode };
 
         try {
             const res = await axios.post("http://localhost:8080/api/dispatch/scan", payload);
+            
+            // 1. Success State
             setScanStatus("SUCCESS");
             playSound('success');
-            setLastOrder(res.data);
-            setScanHistory(prev => [{ time: new Date().toLocaleTimeString(), id: res.data.orderId, sku: res.data.sku }, ...prev].slice(0, 8));
-            setBarcodes({ vCode: "", hCode: "" });
             
-            // Auto Reset after 1.5s
-            setTimeout(() => {
-                setScanStatus("IDLE");
-                vInputRef.current?.focus();
-            }, 1500);
+            // Handle Data
+            const responseData = Array.isArray(res.data) ? res.data : [res.data];
+            setLastOrder(responseData); 
+
+            // Update Log
+            const newLogs = responseData.map(item => ({
+                time: new Date().toLocaleTimeString(),
+                id: item.orderId || "Unknown ID",
+                sku: item.sku
+            }));
+            setScanHistory(prev => [...newLogs, ...prev].slice(0, 12));
+
+            // 2. HANDS-FREE RESET (Fast: 1 second)
+            triggerAutoReset(1000);
 
         } catch (error) {
+            // 1. Error State
             setScanStatus("ERROR");
             playSound('error');
             setErrorMessage(error.response?.data || "Scan Failed");
-            setBarcodes({ vCode: "", hCode: "" });
             
-            // Auto Reset after 2s
-            setTimeout(() => {
-                setScanStatus("IDLE");
-                vInputRef.current?.focus();
-            }, 2500);
+            // 2. HANDS-FREE RESET (Slower: 2.5 seconds to read error)
+            triggerAutoReset(2500);
         }
     };
 
-    // --- THE NEW UI DESIGN ---
+    // --- UI ---
     return (
         <div className="scan-page-bg">
             
-            {/* Header / Session Bar */}
             <div className="d-flex justify-content-between align-items-center px-4 py-3 border-bottom border-secondary">
                 <div className="d-flex align-items-center gap-3">
                     <div className="bg-success rounded-circle" style={{width: 10, height: 10}}></div>
@@ -126,18 +142,16 @@ const ScanPack = () => {
 
             <div className="container-fluid flex-grow-1 d-flex align-items-center justify-content-center p-4">
                 
-                {/* 1. SETUP CARD (If Session Not Active) */}
+                {/* SETUP CARD */}
                 {!isSessionActive && (
                     <div className="scan-card p-5" style={{width: '100%', maxWidth: '500px'}}>
                         <div className="text-center mb-4">
                             <div className="bg-dark rounded-circle d-inline-flex p-3 mb-3 border border-secondary">
                                 <i className="bi bi-gear-wide-connected text-success fs-1"></i>
                             </div>
-                            
-                            <h3 className="fw-bold">Configure Station</h3>
-                            <p className="text-muted small">Select your parameters to begin packing.</p>
+                            <h3 className="fw-bold">Dispatch Station</h3>
+                            <p className="text small">Select your parameters to begin packing.</p>
                         </div>
-                        
                         <div className="d-flex flex-column gap-3">
                             <div className="input-group">
                                 <select className="form-select bg-dark text-white border-secondary" value={session.staffName} onChange={e => setSession({...session, staffName: e.target.value})}>
@@ -146,7 +160,6 @@ const ScanPack = () => {
                                 </select>
                                 <button className="btn btn-outline-secondary" onClick={() => handleAddOption('STAFF', 'staff')}><i className="bi bi-plus-lg"></i></button>
                             </div>
-                            
                             <div className="input-group">
                                 <select className="form-select bg-dark text-white border-secondary" value={session.channel} onChange={e => setSession({...session, channel: e.target.value})}>
                                     <option value="">Select Channel</option>
@@ -154,7 +167,6 @@ const ScanPack = () => {
                                 </select>
                                 <button className="btn btn-outline-secondary" onClick={() => handleAddOption('CHANNEL', 'channel')}><i className="bi bi-plus-lg"></i></button>
                             </div>
-
                             <div className="input-group">
                                 <select className="form-select bg-dark text-white border-secondary" value={session.courierPartner} onChange={e => setSession({...session, courierPartner: e.target.value})}>
                                     <option value="">Select Courier</option>
@@ -162,103 +174,94 @@ const ScanPack = () => {
                                 </select>
                                 <button className="btn btn-outline-secondary" onClick={() => handleAddOption('COURIER', 'courier')}><i className="bi bi-plus-lg"></i></button>
                             </div>
-
-                            <button className="btn btn-success fw-bold py-3 mt-2" onClick={startSession}>
-                                INITIALIZE SYSTEM
-                            </button>
+                            <button className="btn btn-success fw-bold py-3 mt-2" onClick={startSession}>INITIALIZE SYSTEM</button>
                         </div>
                     </div>
                 )}
 
-                {/* 2. SCANNING INTERFACE (Split View) */}
+                {/* SCANNER INTERFACE */}
                 {isSessionActive && (
                     <div className="row w-100" style={{maxWidth: '1200px'}}>
                         
-                        {/* LEFT: THE SCANNER */}
                         <div className="col-lg-7 mb-4 mb-lg-0">
                             <div className={`scan-card h-100 p-5 d-flex flex-column justify-content-center position-relative ${scanStatus !== 'IDLE' ? 'active-glow' : ''}`}>
                                 
-                                {/* Status Overlay (Success/Error) */}
+                                {/* SUCCESS OVERLAY (Hands Free) */}
                                 {scanStatus === 'SUCCESS' && (
                                     <div className="status-overlay">
-                                        <div className="bg-success rounded-circle p-4 mb-3 animate__animated animate__bounceIn">
-                                            <i className="bi bi-check-lg fs-1 text-white"></i>
+                                        <div className="animate__animated animate__zoomIn w-100 text-center">
+                                            <h1 className="display-4 fw-bold text-success mb-0">SUCCESS</h1>
+                                            
+                                            {Array.isArray(lastOrder) && lastOrder.length > 1 ? (
+                                                <div className="mt-3">
+                                                    <div className="badge bg-warning text-dark mb-2 fs-5">⚠️ MULTI-ITEM ({lastOrder.length})</div>
+                                                    <div className="text-start mx-auto" style={{maxWidth: '80%'}}>
+                                                        <ul className="list-group list-group-flush rounded">
+                                                            {lastOrder.map((item, idx) => (
+                                                                <li key={idx} className="list-group-item bg-dark text-white border-secondary d-flex justify-content-between">
+                                                                    <span className="font-monospace text-success">{item.sku}</span>
+                                                                    <span className="small text-muted">{item.orderId}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="fs-4 mt-2 text-white font-monospace">{Array.isArray(lastOrder) ? lastOrder[0].sku : lastOrder?.sku}</div>
+                                                    <div className="small text-muted">{Array.isArray(lastOrder) ? lastOrder[0].orderId : lastOrder?.orderId}</div>
+                                                </>
+                                            )}
                                         </div>
-                                        <h2 className="text-white fw-bold">DISPATCHED</h2>
-                                        <p className="text-success font-monospace">{lastOrder?.sku}</p>
                                     </div>
                                 )}
 
+                                {/* ERROR OVERLAY (Hands Free) */}
                                 {scanStatus === 'ERROR' && (
                                     <div className="status-overlay">
-                                        <div className="bg-danger rounded-circle p-4 mb-3 animate__animated animate__shakeX">
-                                            <i className="bi bi-x-lg fs-1 text-white"></i>
+                                        <div className="animate__animated animate__shakeX text-center">
+                                            <div className="bg-danger rounded-circle p-4 mb-3 d-inline-block">
+                                                <i className="bi bi-x-lg fs-1 text-white"></i>
+                                            </div>
+                                            <h2 className="text-white fw-bold">ERROR</h2>
+                                            <p className="text-danger font-monospace px-4">{errorMessage}</p>
                                         </div>
-                                        <h2 className="text-white fw-bold">ERROR</h2>
-                                        <p className="text-danger font-monospace text-center px-4">{errorMessage}</p>
                                     </div>
                                 )}
 
-                                {/* Inputs */}
+                                {/* INPUTS */}
                                 <div className="text-center mb-5">
-                                    <h5 className="text-muted fw-normal letter-spacing-2">SCAN WORKFLOW</h5>
+                                    <h5 className="text-success fw-normal letter-spacing-2">SCAN WORKFLOW</h5>
                                 </div>
-
                                 <div className="mb-4">
                                     <label className="text-success small fw-bold mb-2">1. TRACKING ID (VERTICAL)</label>
-                                    <input 
-                                        ref={vInputRef}
-                                        type="text" 
-                                        className="scan-input"
-                                        placeholder="Scan..."
-                                        value={barcodes.vCode}
-                                        onChange={e => setBarcodes({...barcodes, vCode: e.target.value})}
-                                        onKeyDown={e => handleKeyPress(e, 'vCode')}
-                                        autoComplete="off"
-                                    />
+                                    <input ref={vInputRef} type="text" className="scan-input" placeholder="Scan..." value={barcodes.vCode} onChange={e => setBarcodes({...barcodes, vCode: e.target.value})} onKeyDown={e => handleKeyPress(e, 'vCode')} autoComplete="off" />
                                 </div>
-
                                 <div>
                                     <label className="text-success small fw-bold mb-2">2. ORDER ID (HORIZONTAL)</label>
-                                    <input 
-                                        ref={hInputRef}
-                                        type="text" 
-                                        className="scan-input"
-                                        placeholder="Waiting..."
-                                        value={barcodes.hCode}
-                                        onChange={e => setBarcodes({...barcodes, hCode: e.target.value})}
-                                        onKeyDown={e => handleKeyPress(e, 'hCode')}
-                                        autoComplete="off"
-                                    />
+                                    <input ref={hInputRef} type="text" className="scan-input" placeholder="Waiting..." value={barcodes.hCode} onChange={e => setBarcodes({...barcodes, hCode: e.target.value})} onKeyDown={e => handleKeyPress(e, 'hCode')} autoComplete="off" />
                                 </div>
-
                             </div>
                         </div>
 
-                        {/* RIGHT: THE LIVE LOG */}
-                        
                         <div className="col-lg-5">
                             <div className="scan-card h-100 p-4">
-                                <h6 className="text-muted border-bottom border-secondary pb-3 mb-3 d-flex justify-content-between">
+                                <h6 className="text-success border-bottom border-secondary pb-3 mb-3 d-flex justify-content-between">
                                     <span>LIVE ACTIVITY LOG</span>
                                     <span className="text-success">• Online</span>
                                 </h6>
-
                                 <div className="d-flex flex-column gap-2" style={{maxHeight: '400px', overflowY: 'auto'}}>
                                     {scanHistory.length === 0 && <div className="text-center text-muted mt-5 opacity-50">Waiting for scans...</div>}
-                                    
                                     {scanHistory.map((log, i) => (
                                         <div key={i} className="scan-log-item success d-flex justify-content-between align-items-center animate__animated animate__fadeInRight">
-                                            <div>
-                                                <div className="fw-bold text-white font-monospace">{log.sku}</div>
-                                                <div className="small text-muted" style={{fontSize: '11px'}}>{log.id}</div>
-                                            </div>
+                                            <div><div className="fw-bold text-white font-monospace">{log.sku}</div><div className="small text-muted" style={{fontSize: '11px'}}>{log.id}</div></div>
                                             <div className="text-secondary small font-monospace">{log.time}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 )}
             </div>
