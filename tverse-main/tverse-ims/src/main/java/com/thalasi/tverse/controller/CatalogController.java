@@ -6,6 +6,7 @@ import com.thalasi.tverse.model.category;
 import com.thalasi.tverse.model.product;
 import com.thalasi.tverse.repository.*;
 import com.thalasi.tverse.service.AbcAnalysisService;
+import com.thalasi.tverse.service.StockoutPredictorService;
 import com.thalasi.tverse.service.catalogService;
 import com.thalasi.tverse.service.ExcelUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,12 +35,12 @@ public class CatalogController {
     @Autowired private catalogService catalogService;
     @Autowired private ExcelUploadService excelService;
     @Autowired private categoryRepo categoryRepo; // Added Repo
-    @Autowired private productvariantRepo variantRepo; // Add this Repo
+    @Autowired private ProductVariantRepo variantRepo; // Add this Repo
     @Autowired private inventorylogRepo logRepo;
     @Autowired private productRepo productrepo;
     @Autowired private AbcAnalysisService abcService;
     @Autowired private DashboardSnapshotRepository snapshotRepository;
-    //
+    @Autowired private StockoutPredictorService stockoutService;
     // --- 1. EXISTING ENDPOINTS ---
     @PostMapping("/add")
     public ResponseEntity<String> addSingleProduct(@RequestBody productRequestDTO request) {
@@ -68,6 +69,15 @@ public class CatalogController {
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
+        }
+    }
+    @PostMapping("/analytics/trigger-stockout")
+    public ResponseEntity<String> manualStockoutTrigger() {
+        try {
+            stockoutService.executeNightlyStockoutPrediction();
+            return ResponseEntity.ok("✅ Stockout Predictor calculated successfully!");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Trigger Failed: " + e.getMessage());
         }
     }
 

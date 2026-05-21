@@ -1,11 +1,5 @@
 package com.thalasi.tverse.service;
 
-import com.thalasi.tverse.repository.SalesOrderRepo;
-import com.thalasi.tverse.repository.productvariantRepo;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.List;
-
 public class AnalyticsService {
 
 //    @Autowired

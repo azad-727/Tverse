@@ -6,7 +6,7 @@ import com.thalasi.tverse.model.SalesOrder;
 import com.thalasi.tverse.model.SalesReturn;
 import com.thalasi.tverse.repository.SalesOrderRepo;
 import com.thalasi.tverse.repository.SalesReturnRepo;
-import com.thalasi.tverse.repository.productvariantRepo;
+import com.thalasi.tverse.repository.ProductVariantRepo;
 import com.thalasi.tverse.model.productVariant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class ReturnService {
     @Autowired private SalesOrderRepo orderRepo;
     @Autowired private SalesReturnRepo returnRepo;
     @Autowired private InventoryService inventoryService; // Reuse existing inventory logic
-    @Autowired private productvariantRepo variantRepo;
+    @Autowired private ProductVariantRepo variantRepo;
 
     @Transactional
     public void processReturn(ReturnProcessDTO request) {

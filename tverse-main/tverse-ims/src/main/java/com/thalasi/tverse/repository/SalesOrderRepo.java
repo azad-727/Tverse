@@ -2,6 +2,7 @@ package com.thalasi.tverse.repository;
 
 import com.thalasi.tverse.model.SalesOrder;
 import com.thalasi.tverse.projection.SkuRevenueProjection;
+import com.thalasi.tverse.projection.SkuVelocityProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -69,4 +70,10 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
             "GROUP BY s.sku " +
             "ORDER BY totalRevenue DESC")
     List<SkuRevenueProjection> findAggregatedRevenuePerSku(@Param("startDate") LocalDateTime startDate);
+    @Query("SELECT s.sku AS sku, CAST(SUM(s.quantity) AS int) AS totalUnitsSold " +
+            "FROM SalesOrder s " +
+            "WHERE s.orderStatus IN ('SHIPPED', 'DELIVERED') " +
+            "AND s.orderDate >= :startDate " +
+            "GROUP BY s.sku")
+    List<SkuVelocityProjection> findSalesVelocityPerSku(@Param("startDate") LocalDateTime startDate);
 }

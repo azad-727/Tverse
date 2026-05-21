@@ -14,7 +14,7 @@ public class catalogService {
     @Autowired private brandRepo brandRepo;
     @Autowired private categoryRepo categoryRepo;
     @Autowired private productRepo productRepo;
-    @Autowired private productvariantRepo variantRepo;
+    @Autowired private ProductVariantRepo variantRepo;
     @Autowired private inventorylogRepo logRepo;
 
     @Transactional

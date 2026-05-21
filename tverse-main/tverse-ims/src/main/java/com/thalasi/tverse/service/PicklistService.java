@@ -4,7 +4,7 @@
     import com.thalasi.tverse.model.SalesOrder;
     import com.thalasi.tverse.model.productVariant; // Your specific model naming
     import com.thalasi.tverse.repository.SalesOrderRepo;
-    import com.thalasi.tverse.repository.productvariantRepo;
+    import com.thalasi.tverse.repository.ProductVariantRepo;
     import org.apache.poi.ss.usermodel.*;
     import org.apache.poi.xssf.usermodel.XSSFWorkbook;
     import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@
     public class PicklistService {
 
         @Autowired
-        private productvariantRepo variantRepo; // Corrected Repo Name
+        private ProductVariantRepo variantRepo; // Corrected Repo Name
         @Autowired
         private MappingService mappingService;
         @Autowired

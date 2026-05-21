@@ -3,21 +3,17 @@ package com.thalasi.tverse.service;
 import com.thalasi.tverse.dto.ManualOrderRequestDTO;
 import com.thalasi.tverse.model.Customer;
 import com.thalasi.tverse.model.SalesOrder;
-import com.thalasi.tverse.model.SalesOrderItem;
 import com.thalasi.tverse.model.productVariant;
 import com.thalasi.tverse.repository.CustomerRepo;
 import com.thalasi.tverse.repository.SalesOrderRepo;
-import com.thalasi.tverse.repository.productvariantRepo;
-import org.jspecify.annotations.Nullable;
+import com.thalasi.tverse.repository.ProductVariantRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class OrderFlowService {
@@ -25,7 +21,7 @@ public class OrderFlowService {
     @Autowired
     private SalesOrderRepo orderRepo;
     @Autowired
-    private productvariantRepo variantRepo;
+    private ProductVariantRepo variantRepo;
     @Autowired
     private CustomerRepo customerRepo;
 

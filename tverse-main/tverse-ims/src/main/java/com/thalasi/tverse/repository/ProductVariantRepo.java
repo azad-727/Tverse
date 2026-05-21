@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.List;
 
 @Repository
-public interface productvariantRepo extends JpaRepository<productVariant, Long>{
+public interface ProductVariantRepo extends JpaRepository<productVariant, Long>{
 
     @Query("SELECT pv FROM productVariant pv " +
             "JOIN FETCH pv.product p " +

@@ -1,7 +1,7 @@
 package com.thalasi.tverse.service;
 
 import com.thalasi.tverse.model.productVariant;
-import com.thalasi.tverse.repository.productvariantRepo;
+import com.thalasi.tverse.repository.ProductVariantRepo;
 import com.thalasi.tverse.repository.SalesOrderRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,7 @@ import java.util.Map;
 @Service
 public class DashboardService {
 
-    @Autowired private productvariantRepo variantRepo;
+    @Autowired private ProductVariantRepo variantRepo;
     @Autowired private SalesOrderRepo salesRepo; // The New Source of Truth
 
     public Map<String, Object> getDashboardStats() {
