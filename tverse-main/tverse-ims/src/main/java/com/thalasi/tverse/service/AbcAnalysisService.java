@@ -5,6 +5,7 @@ import com.thalasi.tverse.projection.SkuRevenueProjection;
 import com.thalasi.tverse.repository.DashboardSnapshotRepository;
 import com.thalasi.tverse.repository.SalesOrderRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,6 +24,13 @@ public class AbcAnalysisService {
 
     @Autowired
     private DashboardSnapshotRepository snapshotRepository;
+
+    @Scheduled(cron = "0 0 2 * * ?")
+    public void scheduleNightlyAnalysis() {
+        System.out.println("CRON TASK TRIGGERED: Starting nightly ABC analysis...");
+        this.executeNightlyAbcAnalysis();
+        System.out.println("CRON TASK COMPLETE: ABC analysis stored successfully.");
+    }git
 
     // 3. Encapsulate execution inside a clear method
     public void executeNightlyAbcAnalysis() {
