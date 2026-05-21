@@ -50,8 +50,12 @@ public class StockoutPredictorService {
             double dailyVelocity = unitsSold / 30.0;
 
             // 2. Fetch Current Physical Stock
-            // int currentStock = variantRepo.findBySku(sku).getStockOnHand(); <-- REPLACE WITH YOUR ACTUAL METHOD
-            int currentStock = 150; // HARDCODED FOR TESTING RIGHT NOW - DELETE THIS LINE LATER
+            int currentStock = variantRepo.findBySku(sku)
+                    .map(variant -> variant.getStockOnHand()) // If found, get the stock
+                    .orElse(0);
+            if(currentStock==0){
+                continue;
+            }
 
             // 3. Calculate Days of Inventory (DOI)
             int daysOfInventory = (int) Math.round(currentStock / dailyVelocity);
