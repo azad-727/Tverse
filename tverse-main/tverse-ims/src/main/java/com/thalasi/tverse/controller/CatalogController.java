@@ -1,14 +1,12 @@
 package com.thalasi.tverse.controller;
 
+import com.thalasi.tverse.dto.SalesOverviewDTO;
 import com.thalasi.tverse.dto.productRequestDTO;
 import com.thalasi.tverse.model.DailyDashboardSnapshot;
 import com.thalasi.tverse.model.category;
 import com.thalasi.tverse.model.product;
 import com.thalasi.tverse.repository.*;
-import com.thalasi.tverse.service.AbcAnalysisService;
-import com.thalasi.tverse.service.StockoutPredictorService;
-import com.thalasi.tverse.service.catalogService;
-import com.thalasi.tverse.service.ExcelUploadService;
+import com.thalasi.tverse.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,7 +29,7 @@ import java.nio.file.StandardCopyOption;
 @RequestMapping("/api/catalog")
 @CrossOrigin(origins = "*")
 public class CatalogController {
-
+    @Autowired private SalesDashboardService dashboardService;
     @Autowired private catalogService catalogService;
     @Autowired private ExcelUploadService excelService;
     @Autowired private categoryRepo categoryRepo; // Added Repo
@@ -84,6 +82,15 @@ public class CatalogController {
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
+        }
+    }
+    @GetMapping("/analytics/sales-overview")
+    public ResponseEntity<?> getSalesOverview(@RequestParam(defaultValue = "7") int days) {
+        try {
+            SalesOverviewDTO overview = dashboardService.getDashboardOverview(days);
+            return ResponseEntity.ok(overview);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to load dashboard data: " + e.getMessage());
         }
     }
     @PostMapping("/analytics/trigger-stockout")

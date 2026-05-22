@@ -61,6 +61,9 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByTrackingId(String vCode);
 
     List<SalesOrder> findByOrderItemId(String hCode);
+    // Add this inside SalesOrderRepo interface:
+    @Query("SELECT s FROM SalesOrder s WHERE s.orderDate >= :startDate AND s.orderDate <= :endDate")
+    List<SalesOrder> findOrdersByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     List<SalesOrder> findByOrderId(String vCode);
     @Query("SELECT s.sku AS sku, SUM(s.quantity * s.sellingPrice) AS totalRevenue " +

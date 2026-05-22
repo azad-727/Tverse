@@ -16,6 +16,11 @@ public interface DashboardSnapshotRepository extends JpaRepository<DailyDashboar
 
     @Modifying
     @Transactional
+    @Query("DELETE FROM DailyDashboardSnapshot d WHERE d.snapshotDate = :date AND d.metricType = :metricType")
+    void deleteBySnapshotDateAndMetricType(@Param("date") LocalDate date, @Param("metricType") String metricType);
+
+    @Modifying
+    @Transactional
     @Query("DELETE FROM DailyDashboardSnapshot d WHERE d.snapshotDate < :cutoffDate")
     void deleteSnapshotsOlderThan(@Param("cutoffDate") LocalDate cutoffDate);
 

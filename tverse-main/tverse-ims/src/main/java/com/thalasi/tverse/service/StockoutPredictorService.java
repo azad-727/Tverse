@@ -6,6 +6,7 @@ import com.thalasi.tverse.repository.DashboardSnapshotRepository;
 import com.thalasi.tverse.repository.ProductVariantRepo;
 import com.thalasi.tverse.repository.SalesOrderRepo;
 
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -28,11 +29,14 @@ public class StockoutPredictorService {
     private ProductVariantRepo variantRepo;
 
     // Runs at 2:30 AM, right after the ABC analysis finishes!
+    @Transactional
     @Scheduled(cron = "0 30 2 * * ?")
     public void executeNightlyStockoutPrediction() {
         System.out.println("CRON TASK: Running Stockout Predictor Engine...");
 
         // Used a 30-day rolling window for velocity
+        snapshotRepository.deleteBySnapshotDateAndMetricType(LocalDate.now(), "STOCKOUT_PREDICTOR");
+
         LocalDateTime startDate = LocalDateTime.now().minusYears(5);
         List<SkuVelocityProjection> velocities = salesOrderRepo.findSalesVelocityPerSku(startDate);
 

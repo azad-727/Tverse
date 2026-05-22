@@ -7,6 +7,7 @@ import com.thalasi.tverse.repository.SalesOrderRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,12 +26,14 @@ public class AbcAnalysisService {
 
     @Autowired
     private DashboardSnapshotRepository snapshotRepository;
+    @Transactional
     @Scheduled(cron = "0 0 3 * * SUN") // Runs every Sunday at 3 AM
     public void pruneOldData() {
         LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
         snapshotRepository.deleteSnapshotsOlderThan(ninetyDaysAgo);
         System.out.println("CRON: Cleaned up old analytics data to save database space.");
     }
+    @Transactional
     @Scheduled(cron = "0 0 2 * * ?")
     public void scheduleNightlyAnalysis() {
         System.out.println("CRON TASK TRIGGERED: Starting nightly ABC analysis...");
@@ -38,11 +41,12 @@ public class AbcAnalysisService {
         this.executeNightlyParentAbcAnalysis(); // Added this so both run!
         System.out.println("CRON TASK COMPLETE: ABC analysis stored successfully.");
     }
-
+    @Transactional
     public void executeNightlyParentAbcAnalysis() {
         // Use minusYears(5) if you are still testing with old data!
-        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
+        snapshotRepository.deleteBySnapshotDateAndMetricType(LocalDate.now(), "PARENT_ABC_ANALYSIS");
 
+        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
         List<SkuRevenueProjection> childRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
         if (childRevenues == null || childRevenues.isEmpty()) return;
 
@@ -109,12 +113,12 @@ public class AbcAnalysisService {
 
         snapshotRepository.saveAll(snapshotsToSave);
     }
-
+    @Transactional
     public void executeNightlyAbcAnalysis() {
         // ... (Your child ABC code is perfect and remains completely unchanged) ...
-        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
+        snapshotRepository.deleteBySnapshotDateAndMetricType(LocalDate.now(), "ABC_ANALYSIS");
 
-        List<SkuRevenueProjection> sortedRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
+        LocalDateTime startDate = LocalDateTime.now().minusYears(5);        List<SkuRevenueProjection> sortedRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
 
         if (sortedRevenues == null || sortedRevenues.isEmpty()) {
             return;
