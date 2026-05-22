@@ -33,7 +33,7 @@ public class StockoutPredictorService {
         System.out.println("CRON TASK: Running Stockout Predictor Engine...");
 
         // Used a 30-day rolling window for velocity
-        LocalDateTime startDate = LocalDateTime.now().minusDays(30);
+        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
         List<SkuVelocityProjection> velocities = salesOrderRepo.findSalesVelocityPerSku(startDate);
 
         if (velocities == null || velocities.isEmpty()) return;
@@ -71,9 +71,8 @@ public class StockoutPredictorService {
             }
 
             // 5. Package as JSON String to hold both the Days and the Status
-            String metricValueJson = String.format("{\"doi\": %d, \"status\": \"%s\", \"velocity\": %.1f,\"unitsSold\":%1.f}",
-                    daysOfInventory, alertStatus, dailyVelocity,unitsSold);
-
+            String metricValueJson = String.format("{\"doi\": %d, \"status\": \"%s\", \"velocity\": %.1f, \"units_sold\": %d}",
+                    daysOfInventory, alertStatus, dailyVelocity, unitsSold);
             DailyDashboardSnapshot snapshot = new DailyDashboardSnapshot();
             snapshot.setSnapshotDate(LocalDate.now());
             snapshot.setMetricType("STOCKOUT_PREDICTOR");

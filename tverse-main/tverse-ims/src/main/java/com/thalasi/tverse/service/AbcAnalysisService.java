@@ -25,7 +25,12 @@ public class AbcAnalysisService {
 
     @Autowired
     private DashboardSnapshotRepository snapshotRepository;
-
+    @Scheduled(cron = "0 0 3 * * SUN") // Runs every Sunday at 3 AM
+    public void pruneOldData() {
+        LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
+        snapshotRepository.deleteSnapshotsOlderThan(ninetyDaysAgo);
+        System.out.println("CRON: Cleaned up old analytics data to save database space.");
+    }
     @Scheduled(cron = "0 0 2 * * ?")
     public void scheduleNightlyAnalysis() {
         System.out.println("CRON TASK TRIGGERED: Starting nightly ABC analysis...");
@@ -36,7 +41,7 @@ public class AbcAnalysisService {
 
     public void executeNightlyParentAbcAnalysis() {
         // Use minusYears(5) if you are still testing with old data!
-        LocalDateTime startDate = LocalDateTime.now().minusDays(30);
+        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
 
         List<SkuRevenueProjection> childRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
         if (childRevenues == null || childRevenues.isEmpty()) return;
@@ -107,7 +112,7 @@ public class AbcAnalysisService {
 
     public void executeNightlyAbcAnalysis() {
         // ... (Your child ABC code is perfect and remains completely unchanged) ...
-        LocalDateTime startDate = LocalDateTime.now().minusDays(30);
+        LocalDateTime startDate = LocalDateTime.now().minusYears(5);
 
         List<SkuRevenueProjection> sortedRevenues = salesOrderRepo.findAggregatedRevenuePerSku(startDate);
 

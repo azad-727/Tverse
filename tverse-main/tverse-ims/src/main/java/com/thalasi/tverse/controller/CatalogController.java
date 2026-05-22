@@ -57,28 +57,33 @@ public class CatalogController {
     public ResponseEntity<String> manualAbcTrigger() {
         try {
             abcService.executeNightlyAbcAnalysis(); // Force-run the computation loop
+            abcService.executeNightlyParentAbcAnalysis();
             return ResponseEntity.ok("✅ ABC Analysis Snapshot calculated and stored successfully!");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Trigger Failed: " + e.getMessage());
         }
     }
     @GetMapping("/analytics/abc")
-    public ResponseEntity<?> getTodaysAbcAnalysis() {
+    public ResponseEntity<?> getLatestAbcAnalysis(@RequestParam(defaultValue = "CHILD") String viewType) {
         try {
-            // Fetch the snapshot for today
-            List<DailyDashboardSnapshot> data = snapshotRepository.findBySnapshotDateAndMetricType(LocalDate.now(), "ABC_ANALYSIS");
+            // Dynamically choose which metric to pull based on the frontend toggle
+            String metricType = viewType.equals("PARENT") ? "PARENT_ABC_ANALYSIS" : "ABC_ANALYSIS";
+
+            List<DailyDashboardSnapshot> data = snapshotRepository.findLatestSnapshotsByMetricType(metricType);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
         }
     }
+
     @GetMapping("/analytics/stockout")
-    public ResponseEntity<?> getTodaysStockoutPredictions(){
-        try{
-            List<DailyDashboardSnapshot> data = snapshotRepository.findBySnapshotDateAndMetricType(LocalDate.now(),"STOCKOUT_PREDICTOR");
+    public ResponseEntity<?> getLatestStockoutPredictions() {
+        try {
+            // Smart fetch for the stockout engine too
+            List<DailyDashboardSnapshot> data = snapshotRepository.findLatestSnapshotsByMetricType("STOCKOUT_PREDICTOR");
             return ResponseEntity.ok(data);
-        }catch (Exception e){
-            return ResponseEntity.internalServerError().body("Failed to load analytics: "+e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
         }
     }
     @PostMapping("/analytics/trigger-stockout")
