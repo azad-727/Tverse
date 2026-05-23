@@ -69,6 +69,15 @@ public class SalesOrder {
     @Column(name = "picklist_id")
     private String picklistId;
 
+    @Column(name = "actual_payout", precision = 10, scale = 2)
+    private BigDecimal actualPayout = BigDecimal.ZERO;
+
+    @Column(name = "ad_spend", precision = 10, scale = 2)
+    private BigDecimal adSpend = BigDecimal.ZERO;
+
+    @Column(name = "true_profit", precision = 10, scale = 2)
+    private BigDecimal trueProfit = BigDecimal.ZERO;
+
     // --- 7. AUDIT ---
     private LocalDateTime importedAt;
 
