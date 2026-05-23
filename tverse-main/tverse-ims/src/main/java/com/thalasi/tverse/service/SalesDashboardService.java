@@ -59,10 +59,25 @@ public class SalesDashboardService {
                 continue;
             }
 
-            // --- SAFETY CHECK 2: Handle missing prices without crashing ---
-            BigDecimal price = order.getSellingPrice() != null ? order.getSellingPrice() : BigDecimal.ZERO;
+            // --- SAFETY CHECK 2: CHANNEL-AWARE PRICE EXTRACTION ---
+            BigDecimal price = BigDecimal.ZERO;
+            String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
 
-            // Safe multiplication
+            if (orderChannel.contains("AMAZON")) {
+                // For Amazon/Cocoblu B2B, top-line revenue is the Product Payment or Item Cost
+                if (order.getProductPayment() != null && order.getProductPayment().compareTo(BigDecimal.ZERO) > 0) {
+                    price = order.getProductPayment();
+                } else if (order.getItemCost() != null && order.getItemCost().compareTo(BigDecimal.ZERO) > 0) {
+                    price = order.getItemCost();
+                } else if (order.getSellingPrice() != null) {
+                    price = order.getSellingPrice(); // Absolute fallback
+                }
+            } else {
+                // For B2C Channels (Meesho, Flipkart, Myntra), top-line revenue is Selling Price
+                price = order.getSellingPrice() != null ? order.getSellingPrice() : BigDecimal.ZERO;
+            }
+
+            // Safe multiplication with the correct, channel-specific price
             BigDecimal orderValue = price.multiply(new BigDecimal(order.getQuantity()));
             int qty = order.getQuantity();
             String status = order.getOrderStatus() != null ? order.getOrderStatus().toUpperCase() : "UNKNOWN";
