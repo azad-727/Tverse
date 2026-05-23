@@ -85,14 +85,18 @@ public class CatalogController {
         }
     }
     @GetMapping("/analytics/sales-overview")
-    public ResponseEntity<?> getSalesOverview(@RequestParam(defaultValue = "7") int days) {
+    public ResponseEntity<?> getSalesOverview(
+            @RequestParam(defaultValue = "7") int days,
+            @RequestParam(defaultValue = "ALL") String channel) { // NEW: Listen for the channel!
         try {
-            SalesOverviewDTO overview = dashboardService.getDashboardOverview(days);
+            // Pass BOTH parameters into your newly robust service
+            SalesOverviewDTO overview = dashboardService.getDashboardOverview(days, channel);
             return ResponseEntity.ok(overview);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to load dashboard data: " + e.getMessage());
         }
     }
+
     @PostMapping("/analytics/trigger-stockout")
     public ResponseEntity<String> manualStockoutTrigger() {
         try {
