@@ -43,7 +43,7 @@ const StockoutDashboard = () => {
         }
     };
 
-    // 4. Function for the "Force Refresh" Button (MOVED INSIDE!)
+    // 4. Function for the "Force Refresh" Button
     const handleForceRefresh = async () => {
         setLoading(true);
         try {
@@ -67,28 +67,31 @@ const StockoutDashboard = () => {
 
     // 6. UI Render
     return (
-        <div className="container-fluid p-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="container-fluid p-3 p-md-4 bg-light" style={{ minHeight: '100vh' }}>
+            
+            {/* --- MOBILE RESPONSIVE HEADER --- */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 bg-white p-3 rounded shadow-sm gap-3">
                 <div>
                     <h3 className="fw-bold mb-0">Stockout Predictor</h3>
-                    <p className="text-muted small">Days of Inventory (DOI) vs 30-Day Sales Velocity</p>
+                    <p className="text-muted small mb-0">Days of Inventory (DOI) vs 30-Day Sales Velocity</p>
                 </div>
                 
-                {/* The updated Force Refresh Button */}
+                {/* The updated Force Refresh Button - Full width on mobile */}
                 <button 
-                    className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
+                    className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center justify-content-center w-100 w-md-auto"
                     onClick={handleForceRefresh} 
                     disabled={loading}
+                    style={{ padding: '8px 16px' }}
                 >
                     <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin-animation' : ''}`}></i>
                     {loading ? 'Syncing...' : 'Refresh'}
                 </button>
             </div>
 
-            {/* --- SUMMARY CARDS --- */}
+            {/* --- SUMMARY CARDS (100% width on phone, 33% on desktop) --- */}
             <div className="row g-3 mb-4">
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div className="col-12 col-lg-4">
+                    <div className="card border-0 shadow-sm bg-danger bg-opacity-10 h-100">
                         <div className="card-body">
                             <h6 className="text-danger fw-bold"><i className="bi bi-exclamation-triangle-fill me-2"></i>Critical Stockout</h6>
                             <h2 className="mb-0">{summary.critical} <span className="fs-6 text-muted fw-normal">SKUs</span></h2>
@@ -96,8 +99,8 @@ const StockoutDashboard = () => {
                         </div>
                     </div>
                 </div>
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm bg-warning bg-opacity-10">
+                <div className="col-12 col-lg-4">
+                    <div className="card border-0 shadow-sm bg-warning bg-opacity-10 h-100">
                         <div className="card-body">
                             <h6 className="text-warning text-dark fw-bold"><i className="bi bi-exclamation-circle-fill me-2"></i>Warning</h6>
                             <h2 className="mb-0">{summary.warning} <span className="fs-6 text-muted fw-normal">SKUs</span></h2>
@@ -105,8 +108,8 @@ const StockoutDashboard = () => {
                         </div>
                     </div>
                 </div>
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div className="col-12 col-lg-4">
+                    <div className="card border-0 shadow-sm bg-success bg-opacity-10 h-100">
                         <div className="card-body">
                             <h6 className="text-success fw-bold"><i className="bi bi-check-circle-fill me-2"></i>Healthy</h6>
                             <h2 className="mb-0">{summary.healthy} <span className="fs-6 text-muted fw-normal">SKUs</span></h2>
@@ -123,20 +126,21 @@ const StockoutDashboard = () => {
                 </div>
                 <div className="card-body p-0">
                     <div className="table-responsive">
-                        <table className="table table-hover align-middle mb-0">
+                        {/* Added minWidth to prevent table columns from squishing on small screens */}
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '700px' }}>
                             <thead className="table-light">
                                 <tr>
-                                    <th className="ps-4">SKU Code</th>
-                                    <th>30-Day Unit Sold</th>
-                                    <th>Daily Velocity</th>
-                                    <th>Days of Inventory (DOI)</th>
-                                    <th>Action Required</th>
+                                    <th className="ps-4 text-nowrap">SKU Code</th>
+                                    <th className="text-nowrap">30-Day Unit Sold</th>
+                                    <th className="text-nowrap">Daily Velocity</th>
+                                    <th className="text-nowrap">Days of Inventory (DOI)</th>
+                                    <th className="text-nowrap">Action Required</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {snapshotData.map((row) => (
                                     <tr key={row.id}>
-                                        <td className="ps-4 fw-bold">{row.metricKey}</td>
+                                        <td className="ps-4 fw-bold text-nowrap">{row.metricKey}</td>
                                         <td>{row.parsedMetrics.units_sold} units</td>
                                         <td>{row.parsedMetrics.velocity.toFixed(1)} units/day</td>
                                         <td>

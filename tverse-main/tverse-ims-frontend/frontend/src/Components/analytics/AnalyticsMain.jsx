@@ -3,7 +3,7 @@ import SalesDashboard from './SalesDashboard';
 import AbcDashboard from './AbcDashboard';
 import StockoutDashboard from './StockoutDashboard';
 import FinanceDashboard from './FinanceDashboard'; // <-- Add this import!
-
+import LiquidationDashboard from './LiquidationDashboard';
 const AnalyticsMain = () => {
     // We now have 4 tabs!
     const [activeTab, setActiveTab] = useState('SALES');
@@ -34,6 +34,14 @@ const AnalyticsMain = () => {
                     </li>
                     <li className="nav-item">
                         <button 
+                            className={`nav-link border-0 border-bottom border-3 px-4 py-2 ${activeTab === 'SEGMENTATION' ? 'active border-primary fw-bold text-dark bg-white' : 'text-muted border-transparent bg-transparent'}`}
+                            onClick={() => setActiveTab('SEGMENTATION')}
+                        >
+                            <i className="bi bi-files me-2"></i> Segmentation
+                        </button>
+                    </li>
+                    <li className="nav-item">
+                        <button 
                             className={`nav-link border-0 border-bottom border-3 px-4 py-2 ${activeTab === 'ABC' ? 'active border-primary fw-bold text-dark bg-white' : 'text-muted border-transparent bg-transparent'}`}
                             onClick={() => setActiveTab('ABC')}
                         >
@@ -57,6 +65,7 @@ const AnalyticsMain = () => {
                             <i className="bi bi-wallet2 me-2"></i> Settlements
                         </button>
                     </li>
+                    
                 </ul>
             </div>
 
@@ -65,7 +74,9 @@ const AnalyticsMain = () => {
                 {activeTab === 'SALES' && <SalesDashboard />}
                 {activeTab === 'ABC' && <AbcDashboard />}
                 {activeTab === 'STOCKOUT' && <StockoutDashboard />}
-                {activeTab === 'FINANCE' && <FinanceDashboard />} {/* <-- Render the new dashboard! */}
+                {activeTab === 'FINANCE' && <FinanceDashboard />}
+                {activeTab === 'SEGMENTATION' && <LiquidationDashboard />}
+                 {/* <-- Render the new dashboard! */}
             </div>
             
         </div>

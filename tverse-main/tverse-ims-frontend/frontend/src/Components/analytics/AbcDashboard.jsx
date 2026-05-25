@@ -45,7 +45,7 @@ const AbcDashboard = () => {
         }
     };
 
-    // 4. Function for the "Force Refresh" Button (MOVED INSIDE!)
+    // 4. Function for the "Force Refresh" Button
     const handleForceRefresh = async () => {
         setLoading(true);
         try {
@@ -69,28 +69,30 @@ const AbcDashboard = () => {
 
     // 6. UI Render
     return (
-        <div className="container-fluid p-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="container-fluid p-3 p-md-4 bg-light" style={{ minHeight: '100vh' }}>
+            
+            {/* --- MOBILE RESPONSIVE HEADER --- */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 bg-white p-3 rounded shadow-sm gap-3">
                 <div>
                     <h3 className="fw-bold mb-0">ABC Inventory Analysis</h3>
                     <p className="text-muted small mb-0">Revenue contribution (80/15/5 Rule)</p>
                     {lastUpdated && (
-                        <span className="badge bg-light text-secondary border mt-1">
+                        <span className="badge bg-light text-secondary border mt-1 d-inline-block">
                             <i className="bi bi-clock-history me-1"></i> Data as of: {lastUpdated}
                         </span>
                     )}
                 </div>
                 
-                <div className="d-flex gap-2">
-                    <div className="btn-group shadow-sm" role="group">
+                <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
+                    <div className="btn-group shadow-sm w-100 w-sm-auto" role="group">
                         <button 
-                            className={`btn btn-sm ${viewMode === 'CHILD' ? 'btn-dark' : 'btn-outline-dark'}`}
+                            className={`btn btn-sm w-50 ${viewMode === 'CHILD' ? 'btn-dark' : 'btn-outline-dark'}`}
                             onClick={() => setViewMode('CHILD')}
                         >
                             <i className="bi bi-tag me-1"></i> Child SKUs
                         </button>
                         <button 
-                            className={`btn btn-sm ${viewMode === 'PARENT' ? 'btn-dark' : 'btn-outline-dark'}`}
+                            className={`btn btn-sm w-50 ${viewMode === 'PARENT' ? 'btn-dark' : 'btn-outline-dark'}`}
                             onClick={() => setViewMode('PARENT')}
                         >
                             <i className="bi bi-diagram-3 me-1"></i> Parent Designs
@@ -99,7 +101,7 @@ const AbcDashboard = () => {
                     
                     {/* The updated Force Refresh Button */}
                     <button 
-                        className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
+                        className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center justify-content-center w-100 w-sm-auto"
                         onClick={handleForceRefresh} 
                         disabled={loading}
                     >
@@ -109,10 +111,10 @@ const AbcDashboard = () => {
                 </div>
             </div>
 
-            {/* --- SUMMARY CARDS --- */}
+            {/* --- SUMMARY CARDS (100% width on phone, 50% tablet, 25% desktop) --- */}
             <div className="row g-3 mb-4">
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm bg-success bg-opacity-10">
+                <div className="col-12 col-sm-6 col-xl-3">
+                    <div className="card border-0 shadow-sm bg-success bg-opacity-10 h-100">
                         <div className="card-body">
                             <h6 className="text-success fw-bold">Class A (Top 80%)</h6>
                             <h2 className="mb-0">{summary.A} <span className="fs-6 text-muted fw-normal">Items</span></h2>
@@ -120,17 +122,17 @@ const AbcDashboard = () => {
                         </div>
                     </div>
                 </div>
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm bg-warning bg-opacity-10">
+                <div className="col-12 col-sm-6 col-xl-3">
+                    <div className="card border-0 shadow-sm bg-warning bg-opacity-10 h-100">
                         <div className="card-body">
-                            <h6 className="text-warning fw-bold">Class B (Next 15%)</h6>
+                            <h6 className="text-warning text-dark fw-bold">Class B (Next 15%)</h6>
                             <h2 className="mb-0">{summary.B} <span className="fs-6 text-muted fw-normal">Items</span></h2>
                             <small className="text-muted">Moderate revenue.</small>
                         </div>
                     </div>
                 </div>
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm bg-secondary bg-opacity-10">
+                <div className="col-12 col-sm-6 col-xl-3">
+                    <div className="card border-0 shadow-sm bg-secondary bg-opacity-10 h-100">
                         <div className="card-body">
                             <h6 className="text-secondary fw-bold">Class C (Bottom 5%)</h6>
                             <h2 className="mb-0">{summary.C} <span className="fs-6 text-muted fw-normal">Items</span></h2>
@@ -138,8 +140,8 @@ const AbcDashboard = () => {
                         </div>
                     </div>
                 </div>
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm bg-primary bg-opacity-10">
+                <div className="col-12 col-sm-6 col-xl-3">
+                    <div className="card border-0 shadow-sm bg-primary bg-opacity-10 h-100">
                         <div className="card-body">
                             <h6 className="text-primary fw-bold">Total Analyzed</h6>
                             <h2 className="mb-0">{summary.Total} <span className="fs-6 text-muted fw-normal">Items</span></h2>
@@ -156,19 +158,19 @@ const AbcDashboard = () => {
                 </div>
                 <div className="card-body p-0">
                     <div className="table-responsive">
-                        <table className="table table-hover align-middle mb-0">
+                        <table className="table table-hover align-middle mb-0" style={{ minWidth: '600px' }}>
                             <thead className="table-light">
                                 <tr>
-                                    <th className="ps-4">SKU Code</th>
-                                    <th>Classification</th>
-                                    <th>Total Revenue</th>
-                                    <th>Contribution</th>
+                                    <th className="ps-4 text-nowrap">SKU Code</th>
+                                    <th className="text-nowrap">Classification</th>
+                                    <th className="text-nowrap">Total Revenue</th>
+                                    <th className="text-nowrap">Contribution</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {snapshotData.map((row) => (
                                     <tr key={row.id}>
-                                        <td className="ps-4 fw-bold">{row.metricKey}</td>
+                                        <td className="ps-4 fw-bold text-nowrap">{row.metricKey}</td>
                                         <td>
                                             <span className={`badge ${
                                                 row.parsedMetrics.category === 'A' ? 'bg-success' : 
@@ -177,11 +179,11 @@ const AbcDashboard = () => {
                                                 Class {row.parsedMetrics.category}
                                             </span>
                                         </td>
-                                        <td className="fw-medium">₹{row.parsedMetrics.revenue.toLocaleString('en-IN')}</td>
+                                        <td className="fw-medium text-nowrap">₹{row.parsedMetrics.revenue.toLocaleString('en-IN')}</td>
                                         <td>
                                             <div className="d-flex align-items-center gap-2">
-                                                <span>{row.parsedMetrics.contributionPct.toFixed(2)}%</span>
-                                                <div className="progress" style={{ width: '60px', height: '6px' }}>
+                                                <span style={{ minWidth: '45px' }}>{row.parsedMetrics.contributionPct.toFixed(2)}%</span>
+                                                <div className="progress w-100" style={{ maxWidth: '100px', height: '6px' }}>
                                                     <div className={`progress-bar ${row.parsedMetrics.category === 'A' ? 'bg-success' : 'bg-secondary'}`} 
                                                          style={{ width: `${row.parsedMetrics.contributionPct}%` }}></div>
                                                 </div>
@@ -189,6 +191,13 @@ const AbcDashboard = () => {
                                         </td>
                                     </tr>
                                 ))}
+                                {snapshotData.length === 0 && (
+                                    <tr>
+                                        <td colSpan="4" className="text-center p-5 text-muted">
+                                            No ABC data available. Try refreshing.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
