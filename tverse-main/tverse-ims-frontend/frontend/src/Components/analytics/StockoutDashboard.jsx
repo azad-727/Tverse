@@ -43,6 +43,26 @@ const StockoutDashboard = () => {
     if (loading) {
         return <div className="p-5 text-center"><span className="spinner-border text-danger"></span> Loading Predictions...</div>;
     }
+    
+    const fetchData= async () =>{
+        setLoading(true);
+
+        try{
+            const res = await axios.get('http://localhost:8080/api/catalog/analytics/trigger-stockout');
+            console.log("Data refreshed successfully");
+
+        }
+        catch(error){
+            console.error("Error refreshing data:",error);
+            alert("Failed to refresh data. Please check the server.");
+        }finally{
+            setLoading(false);
+        }
+    };
+    
+    useEffect(()=>{
+        fetchData;
+    },[]);
 
     return (
         <div className="container-fluid p-4">
@@ -51,9 +71,12 @@ const StockoutDashboard = () => {
                     <h3 className="fw-bold mb-0">Stockout Predictor</h3>
                     <p className="text-muted small">Days of Inventory (DOI) vs 30-Day Sales Velocity</p>
                 </div>
-                <button className="btn btn-outline-danger btn-sm" onClick={fetchStockoutData}>
-                    <i className="bi bi-arrow-clockwise"></i> Refresh
-                </button>
+            <button className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
+            onClick={() => fetchData()} // Replace with your actual fetch function name
+            disabled={loading}>
+            <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin-animation' : ''}`}></i>
+            {loading ? 'Syncing...' : 'Refresh'}
+            </button>
             </div>
 
             {/* --- SUMMARY CARDS --- */}
@@ -98,6 +121,7 @@ const StockoutDashboard = () => {
                             <thead className="table-light">
                                 <tr>
                                     <th className="ps-4">SKU Code</th>
+                                    <th>30-Day Unit Sold</th>
                                     <th>Daily Velocity</th>
                                     <th>Days of Inventory (DOI)</th>
                                     <th>Action Required</th>
@@ -107,6 +131,7 @@ const StockoutDashboard = () => {
                                 {snapshotData.map((row) => (
                                     <tr key={row.id}>
                                         <td className="ps-4 fw-bold">{row.metricKey}</td>
+                                        <td>{row.parsedMetrics.units_sold} units</td>
                                         <td>{row.parsedMetrics.velocity.toFixed(1)} units/day</td>
                                         <td>
                                             <span className={`fw-bold ${row.parsedMetrics.doi <= 15 ? 'text-danger' : row.parsedMetrics.doi <= 30 ? 'text-warning text-dark' : 'text-success'}`}>
