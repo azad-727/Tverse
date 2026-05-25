@@ -23,7 +23,6 @@ public class SalesDashboardService {
     @Autowired
     private SalesOrderRepo salesOrderRepo;
 
-    // NEW: We added a 'channel' parameter to filter the dashboard
     public SalesOverviewDTO getDashboardOverview(int daysToLookBack, String channel) {
 
         // 1. Calculate the date window
@@ -40,17 +39,20 @@ public class SalesDashboardService {
 
         Map<String, DailyTrendDTO> trendMap = new HashMap<>();
         Map<String, ProductPerformanceDTO> productMap = new HashMap<>();
+        Map<String, BigDecimal> channelMap = new HashMap<>();
+        Map<String, BigDecimal> monthMap = new HashMap<>();
+
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd MMM");
+        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMM yyyy"); // NEW: For the Bar Chart
 
         // 3. Crunch the numbers (BULLETPROOF VERSION)
         for (SalesOrder order : orders) {
 
             // --- FILTER: Channel Isolation ---
-            // If the user selected a specific channel, ignore orders from other channels
             if (channel != null && !channel.equalsIgnoreCase("ALL") && !channel.isEmpty()) {
                 String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
                 if (!orderChannel.contains(channel.toUpperCase())) {
-                    continue; // Skip this order, it belongs to a different channel
+                    continue;
                 }
             }
 
@@ -64,20 +66,17 @@ public class SalesDashboardService {
             String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
 
             if (orderChannel.contains("AMAZON")) {
-                // For Amazon/Cocoblu B2B, top-line revenue is the Product Payment or Item Cost
                 if (order.getProductPayment() != null && order.getProductPayment().compareTo(BigDecimal.ZERO) > 0) {
                     price = order.getProductPayment();
                 } else if (order.getItemCost() != null && order.getItemCost().compareTo(BigDecimal.ZERO) > 0) {
                     price = order.getItemCost();
                 } else if (order.getSellingPrice() != null) {
-                    price = order.getSellingPrice(); // Absolute fallback
+                    price = order.getSellingPrice();
                 }
             } else {
-                // For B2C Channels (Meesho, Flipkart, Myntra), top-line revenue is Selling Price
                 price = order.getSellingPrice() != null ? order.getSellingPrice() : BigDecimal.ZERO;
             }
 
-            // Safe multiplication with the correct, channel-specific price
             BigDecimal orderValue = price.multiply(new BigDecimal(order.getQuantity()));
             int qty = order.getQuantity();
             String status = order.getOrderStatus() != null ? order.getOrderStatus().toUpperCase() : "UNKNOWN";
@@ -86,7 +85,7 @@ public class SalesDashboardService {
             dto.setGrossSales(dto.getGrossSales().add(orderValue));
             dto.setGrossUnits(dto.getGrossUnits() + qty);
 
-            // --- B. Group By Date (For the Chart) ---
+            // --- B. Group By Date (For the Line Chart) ---
             String dateStr = order.getOrderDate().format(dateFormatter);
             DailyTrendDTO trend = trendMap.computeIfAbsent(dateStr, k -> new DailyTrendDTO(dateStr));
             trend.gross = trend.gross.add(orderValue);
@@ -100,7 +99,15 @@ public class SalesDashboardService {
                 prod.units += qty;
             }
 
-            // --- D. Status Switch ---
+            // --- D. Group By Channel (For the Pie Chart) ---
+            String channelName = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
+            channelMap.put(channelName, channelMap.getOrDefault(channelName, BigDecimal.ZERO).add(orderValue));
+
+            // --- E. Group By Month (For the Bar Chart) ---
+            String monthStr = order.getOrderDate().format(monthFormatter);
+            monthMap.put(monthStr, monthMap.getOrDefault(monthStr, BigDecimal.ZERO).add(orderValue));
+
+            // --- F. Status Switch ---
             switch (status) {
                 case "CANCELLED":
                     dto.setCancellations(dto.getCancellations().add(orderValue));
@@ -141,6 +148,22 @@ public class SalesDashboardService {
                 .sorted((a, b) -> b.gross.compareTo(a.gross))
                 .collect(Collectors.toList());
         dto.setTopProducts(sortedProducts);
+
+        // Package Channel Pie Chart Data
+        channelMap.forEach((name, value) -> {
+            Map<String, Object> c = new HashMap<>();
+            c.put("name", name);
+            c.put("value", value);
+            dto.channelData.add(c);
+        });
+
+        // Package Monthly Bar Chart Data
+        monthMap.forEach((month, gross) -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("month", month);
+            m.put("gross", gross);
+            dto.monthlyData.add(m);
+        });
 
         return dto;
     }

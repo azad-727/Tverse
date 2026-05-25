@@ -5,6 +5,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class SalesOverviewDTO {
@@ -28,4 +29,6 @@ public class SalesOverviewDTO {
 
     public List<ProductPerformanceDTO> getTopProducts() { return topProducts; }
     public void setTopProducts(List<ProductPerformanceDTO> topProducts) { this.topProducts = topProducts; }
+    public List<Map<String, Object>> channelData = new ArrayList<>();
+    public List<Map<String, Object>> monthlyData = new ArrayList<>();
 }
