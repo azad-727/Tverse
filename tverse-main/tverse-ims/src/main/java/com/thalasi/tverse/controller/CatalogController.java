@@ -1,6 +1,7 @@
 package com.thalasi.tverse.controller;
 
 import com.thalasi.tverse.dto.SalesOverviewDTO;
+import com.thalasi.tverse.dto.VariantPerformanceDTO;
 import com.thalasi.tverse.dto.productRequestDTO;
 import com.thalasi.tverse.model.DailyDashboardSnapshot;
 import com.thalasi.tverse.model.category;
@@ -38,6 +39,7 @@ public class CatalogController {
     @Autowired private productRepo productrepo;
     @Autowired private AbcAnalysisService abcService;
     @Autowired private StockoutPredictorService stockService;
+    @Autowired private LiquidationService liquidationService;
     @Autowired private DashboardSnapshotRepository snapshotRepository;
     @Autowired private StockoutPredictorService stockoutService;
     // --- 1. EXISTING ENDPOINTS ---
@@ -71,6 +73,18 @@ public class CatalogController {
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
+        }
+    }
+    @GetMapping("/analytics/liquidation")
+    public ResponseEntity<?> getLiquidationAnalysis(
+            @RequestParam(defaultValue = "90") int days,
+            @RequestParam(defaultValue = "ALL") String category) {
+        try {
+            // Fetch the lifecycle data from your newly built service
+            List<VariantPerformanceDTO> data = liquidationService.getVariantLifecycle(days, category);
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to load liquidation data: " + e.getMessage());
         }
     }
 
