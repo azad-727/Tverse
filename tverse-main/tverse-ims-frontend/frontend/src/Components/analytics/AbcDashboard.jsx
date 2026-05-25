@@ -2,25 +2,24 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AbcDashboard = () => {
+    // 1. All State Definitions at the very top
     const [snapshotData, setSnapshotData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState({ A: 0, B: 0, C: 0, Total: 0 });
     const [lastUpdated, setLastUpdated] = useState(null);
-    
-    // Tracks whether we are viewing exact SKUs or Parent Designs
     const [viewMode, setViewMode] = useState('CHILD'); 
 
+    // 2. Initial Load / View Mode Switcher
     useEffect(() => {
         fetchAbcData();
     }, [viewMode]);
 
+    // 3. Function to pull data from the database
     const fetchAbcData = async () => {
         setLoading(true);
         try {
-            // Fetches data dynamically based on the toggle switch
             const res = await axios.get(`http://localhost:8080/api/catalog/analytics/abc?viewType=${viewMode}`);
             
-            // Parses the JSON string from the backend into a usable JavaScript object
             const parsedData = res.data.map(row => ({
                 ...row,
                 parsedMetrics: JSON.parse(row.metricValue)
@@ -46,30 +45,29 @@ const AbcDashboard = () => {
         }
     };
 
-    if (loading) {
-        return <div className="p-5 text-center"><span className="spinner-border text-primary"></span> Loading Analytics...</div>;
-    }
-
-    const fetchData= async () =>{
+    // 4. Function for the "Force Refresh" Button (MOVED INSIDE!)
+    const handleForceRefresh = async () => {
         setLoading(true);
-
-        try{
-            const res = await axios.get('http://localhost:8080/api/catalog/analytics/trigger-abc');
-            console.log("Data refreshed successfully");
-
-        }
-        catch(error){
-            console.error("Error refreshing data:",error);
+        try {
+            // Step 1: Tell Spring Boot to recalculate the snapshot
+            await axios.post('http://localhost:8080/api/catalog/analytics/trigger-abc');
+            console.log("Database snapshot recalculated successfully");
+            
+            // Step 2: Fetch the brand new data and show it on the UI
+            await fetchAbcData(); 
+        } catch (error) {
+            console.error("Error refreshing data:", error);
             alert("Failed to refresh data. Please check the server.");
-        }finally{
             setLoading(false);
         }
     };
-    
-    useEffect(()=>{
-        fetchData;
-    },[]);
 
+    // 5. Early Returns
+    if (loading && snapshotData.length === 0) {
+        return <div className="p-5 text-center"><span className="spinner-border text-primary"></span> Loading Analytics...</div>;
+    }
+
+    // 6. UI Render
     return (
         <div className="container-fluid p-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
@@ -84,7 +82,6 @@ const AbcDashboard = () => {
                 </div>
                 
                 <div className="d-flex gap-2">
-                    {/* The Parent/Child Toggle Switch */}
                     <div className="btn-group shadow-sm" role="group">
                         <button 
                             className={`btn btn-sm ${viewMode === 'CHILD' ? 'btn-dark' : 'btn-outline-dark'}`}
@@ -100,11 +97,14 @@ const AbcDashboard = () => {
                         </button>
                     </div>
                     
-                    <button className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
-                    onClick={() => fetchData()} // Replace with your actual fetch function name
-                    disabled={loading}>
-                    <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin-animation' : ''}`}></i>
-                    {loading ? 'Syncing...' : 'Refresh'}
+                    {/* The updated Force Refresh Button */}
+                    <button 
+                        className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
+                        onClick={handleForceRefresh} 
+                        disabled={loading}
+                    >
+                        <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin-animation' : ''}`}></i>
+                        {loading ? 'Syncing...' : 'Refresh'}
                     </button>
                 </div>
             </div>

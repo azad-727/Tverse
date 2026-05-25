@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const StockoutDashboard = () => {
+    // 1. All State Definitions at the very top
     const [snapshotData, setSnapshotData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState({ critical: 0, warning: 0, healthy: 0 });
 
+    // 2. Initial Load
     useEffect(() => {
         fetchStockoutData();
     }, []);
 
+    // 3. Function to pull data from the database
     const fetchStockoutData = async () => {
         try {
             const res = await axios.get("http://localhost:8080/api/catalog/analytics/stockout");
@@ -40,30 +43,29 @@ const StockoutDashboard = () => {
         }
     };
 
-    if (loading) {
-        return <div className="p-5 text-center"><span className="spinner-border text-danger"></span> Loading Predictions...</div>;
-    }
-    
-    const fetchData= async () =>{
+    // 4. Function for the "Force Refresh" Button (MOVED INSIDE!)
+    const handleForceRefresh = async () => {
         setLoading(true);
-
-        try{
-            const res = await axios.get('http://localhost:8080/api/catalog/analytics/trigger-stockout');
-            console.log("Data refreshed successfully");
-
-        }
-        catch(error){
-            console.error("Error refreshing data:",error);
+        try {
+            // Step 1: Tell Spring Boot to recalculate the stockout snapshot
+            await axios.post('http://localhost:8080/api/catalog/analytics/trigger-stockout');
+            console.log("Stockout snapshot recalculated successfully");
+            
+            // Step 2: Fetch the brand new data and show it on the UI
+            await fetchStockoutData(); 
+        } catch (error) {
+            console.error("Error refreshing data:", error);
             alert("Failed to refresh data. Please check the server.");
-        }finally{
             setLoading(false);
         }
     };
-    
-    useEffect(()=>{
-        fetchData;
-    },[]);
 
+    // 5. Early Return for Loading State
+    if (loading && snapshotData.length === 0) {
+        return <div className="p-5 text-center"><span className="spinner-border text-danger"></span> Loading Predictions...</div>;
+    }
+
+    // 6. UI Render
     return (
         <div className="container-fluid p-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
@@ -71,12 +73,16 @@ const StockoutDashboard = () => {
                     <h3 className="fw-bold mb-0">Stockout Predictor</h3>
                     <p className="text-muted small">Days of Inventory (DOI) vs 30-Day Sales Velocity</p>
                 </div>
-            <button className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
-            onClick={() => fetchData()} // Replace with your actual fetch function name
-            disabled={loading}>
-            <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin-animation' : ''}`}></i>
-            {loading ? 'Syncing...' : 'Refresh'}
-            </button>
+                
+                {/* The updated Force Refresh Button */}
+                <button 
+                    className="btn btn-outline-primary btn-sm fw-bold shadow-sm d-flex align-items-center"
+                    onClick={handleForceRefresh} 
+                    disabled={loading}
+                >
+                    <i className={`bi bi-arrow-clockwise me-2 ${loading ? 'spin-animation' : ''}`}></i>
+                    {loading ? 'Syncing...' : 'Refresh'}
+                </button>
             </div>
 
             {/* --- SUMMARY CARDS --- */}
@@ -147,7 +153,7 @@ const StockoutDashboard = () => {
                                 ))}
                                 {snapshotData.length === 0 && (
                                     <tr>
-                                        <td colSpan="4" className="text-center p-5 text-muted">
+                                        <td colSpan="5" className="text-center p-5 text-muted">
                                             No stockout predictions found. Run the engine!
                                         </td>
                                     </tr>
