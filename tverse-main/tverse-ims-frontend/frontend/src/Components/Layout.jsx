@@ -71,7 +71,9 @@ const Layout = ({ children }) => {
                     <Link to="/picklist" className={`sidebar-link text-decoration-none ${isActive('/picklist')}`} onClick={() => setIsSidebarOpen(false)}>
                         <i className="bi bi-clipboard-check me-3 fs-5"></i> Picklist
                     </Link>
-               
+                    <Link to="/reports" className={`sidebar-link text-decoration-none ${isActive('/reports')}`} onClick={() => setIsSidebarOpen(false)}>
+                        <i className="bi bi-download me-3 fs-5"></i> Reports
+                    </Link>
                 
                 </div>
             </div>
