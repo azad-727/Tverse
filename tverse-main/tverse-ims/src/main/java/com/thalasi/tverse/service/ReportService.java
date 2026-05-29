@@ -193,24 +193,121 @@ public class ReportService {
     }
 
     private String[] getChannelHeaders(String channel) {
-        if ("AMAZON".equalsIgnoreCase(channel)) {
-            return new String[]{"Amazon Order ID", "ASIN", "SKU", "Warehouse Code", "Qty", "Selling Price", "Tracking ID", "Customer State"};
-        } else if ("FLIPKART".equalsIgnoreCase(channel)) {
-            return new String[]{"Flipkart Order ID", "Order Item ID", "Shipment ID", "FSN", "Listing ID", "SKU", "Qty", "Selling Price", "Tracking ID"};
-        } else { // Unified Master Layout
-            return new String[]{"Thalasi Ref ID", "Channel", "Order ID", "SKU", "Product Name", "Qty", "Selling Price", "Tracking ID", "Status", "Order Date", "Payout", "True Profit"};
+        switch (channel.toUpperCase()) {
+            case "FLIPKART":
+                return new String[]{
+                        "Ordered Date", "Shipment ID", "ORDER ITEM ID", "Order Id",
+                        "Hsn Code", "Order Type", "FSN", "SKU", "Invoice No.",
+                        "Invoice Amt", "Selling Price", "Qty", "City", "State",
+                        "Pincode", "Tracking Id", "Phone Number"
+                };
+
+            case "AMAZON":
+                return new String[]{
+                        "date/time", "Order Id", "Hsn Code", "Asin", "SKU",
+                        "product sales", "quantity", "order city", "order state",
+                        "order postal", "Tracking Id"
+                };
+
+            case "COCOBLU":
+            case "AMAZON - COCOBLU":
+                return new String[]{
+                        "Order Place Date", "Warehouse Code", "Order Id", "Hsn Code",
+                        "ASIN", "SKU", "Invoice Id", "Item Cost", "Item Quantity",
+                        "Ship To City", "Ship To State", "Ship To ZIP Code"
+                };
+
+            default: // "ALL" - Unified Master Column Layout Matrix
+                return new String[]{
+                        "Order Date", "Warehouse Code", "Shipment ID", "ORDER ITEM ID",
+                        "Order Id", "Hsn Code", "Order Type", "Product Id", "Product Sku",
+                        "Invoice No.", "Item Cost", "Selling Price", "Qty", "City",
+                        "State", "Pincode", "Tracking Id", "Phone Number"
+                };
         }
     }
 
     private void printChannelRecord(CSVPrinter printer, SalesOrder order, String channel) throws IOException {
-        if ("AMAZON".equalsIgnoreCase(channel)) {
-            printer.printRecord(order.getOrderId(), order.getAsin(), order.getSku(), order.getWarehouseCode(), order.getQuantity(), order.getSellingPrice(), order.getTrackingId(), order.getCustomerState());
-        } else if ("FLIPKART".equalsIgnoreCase(channel)) {
-            printer.printRecord(order.getOrderId(), order.getOrderItemId(), order.getShipmentId(), order.getFsn(), order.getListingId(), order.getSku(), order.getQuantity(), order.getSellingPrice(), order.getTrackingId());
-        } else { // Master Format Includes Financial Margins
-            printer.printRecord(order.getUniqueReferenceId(), order.getChannel(), order.getOrderId(), order.getSku(), order.getProductName(), order.getQuantity(), order.getSellingPrice(), order.getTrackingId(), order.getOrderStatus(), order.getOrderDate(), order.getActualPayout(), order.getTrueProfit());
+        switch (channel.toUpperCase()) {
+            case "FLIPKART":
+                printer.printRecord(
+                        order.getOrderDate(),
+                        order.getShipmentId() != null ? order.getShipmentId() : "",
+                        order.getOrderItemId() != null ? order.getOrderItemId() : "",
+                        order.getOrderId() != null ? order.getOrderId() : "",
+                        "", // Hsn Code placeholder
+                        "", // Order Type placeholder
+                        order.getFsn() != null ? order.getFsn() : "",
+                        order.getSku() != null ? order.getSku() : "",
+                        order.getInvoiceNumber() != null ? order.getInvoiceNumber() : "",
+                        order.getProductPayment(), // Invoice Amt mapping
+                        order.getSellingPrice(),
+                        order.getQuantity(),
+                        order.getCustomerCity() != null ? order.getCustomerCity() : "",
+                        order.getCustomerState() != null ? order.getCustomerState() : "",
+                        order.getPincode() != null ? order.getPincode() : "",
+                        order.getTrackingId() != null ? order.getTrackingId() : "",
+                        ""  // Phone Number placeholder
+                );
+                break;
+
+            case "AMAZON":
+                printer.printRecord(
+                        order.getOrderDate(),
+                        order.getOrderId() != null ? order.getOrderId() : "",
+                        "", // Hsn Code placeholder
+                        order.getAsin() != null ? order.getAsin() : "",
+                        order.getSku() != null ? order.getSku() : "",
+                        order.getSellingPrice(), // product sales header mapping
+                        order.getQuantity(),     // quantity header mapping
+                        order.getCustomerCity() != null ? order.getCustomerCity() : "",
+                        order.getCustomerState() != null ? order.getCustomerState() : "",
+                        order.getPincode() != null ? order.getPincode() : "",
+                        order.getTrackingId() != null ? order.getTrackingId() : ""
+                );
+                break;
+
+            case "COCOBLU":
+            case "AMAZON - COCOBLU":
+                printer.printRecord(
+                        order.getOrderDate(),
+                        order.getWarehouseCode() != null ? order.getWarehouseCode() : "",
+                        order.getOrderId() != null ? order.getOrderId() : "",
+                        "", // Hsn Code placeholder
+                        order.getAsin() != null ? order.getAsin() : "",
+                        order.getSku() != null ? order.getSku() : "",
+                        order.getInvoiceNumber() != null ? order.getInvoiceNumber() : "", // Invoice Id mapping
+                        order.getItemCost(),
+                        order.getQuantity(), // Item Quantity header mapping
+                        order.getCustomerCity() != null ? order.getCustomerCity() : "",
+                        order.getCustomerState() != null ? order.getCustomerState() : "",
+                        order.getPincode() != null ? order.getPincode() : ""
+                );
+                break;
+
+            default: // Master Column Complete Dump
+                printer.printRecord(
+                        order.getOrderDate(),
+                        order.getWarehouseCode() != null ? order.getWarehouseCode() : "",
+                        order.getShipmentId() != null ? order.getShipmentId() : "",
+                        order.getOrderItemId() != null ? order.getOrderItemId() : "",
+                        order.getOrderId() != null ? order.getOrderId() : "",
+                        "", // Hsn Code
+                        "", // Order Type
+                        order.getFsn() != null ? order.getFsn() : (order.getAsin() != null ? order.getAsin() : ""), // Product Id resolution
+                        order.getSku() != null ? order.getSku() : "",
+                        order.getInvoiceNumber() != null ? order.getInvoiceNumber() : "",
+                        order.getItemCost(),
+                        order.getSellingPrice(),
+                        order.getQuantity(),
+                        order.getCustomerCity() != null ? order.getCustomerCity() : "",
+                        order.getCustomerState() != null ? order.getCustomerState() : "",
+                        order.getPincode() != null ? order.getPincode() : "",
+                        order.getTrackingId() != null ? order.getTrackingId() : "",
+                        ""  // Phone Number
+                );
+                break;
         }
-    }
 
 
 
