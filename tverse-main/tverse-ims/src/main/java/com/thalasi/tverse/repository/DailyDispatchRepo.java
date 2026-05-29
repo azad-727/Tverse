@@ -29,4 +29,5 @@ public interface DailyDispatchRepo extends JpaRepository<DailyDispatch,Long> {
             @Param("staff") String staff,
             @Param("search") String search
             );
+    List<DailyDispatch> findByScanTimeAfter(LocalDateTime date);
 }

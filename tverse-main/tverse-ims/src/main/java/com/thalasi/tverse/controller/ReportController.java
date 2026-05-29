@@ -25,7 +25,7 @@ public class ReportController {
             @RequestParam(defaultValue = "ALL") String category,
             HttpServletResponse response) throws IOException {
 
-        // 1. Generate a clean timestamp for the filename (e.g., 2026-05-28_14-30-00)
+        // 1. Generate a clean timestamp for the filename
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
 
         // 2. Set browser headers to trigger a file download
@@ -37,9 +37,27 @@ public class ReportController {
             case "CATALOG_TEMPLATE":
                 reportService.generateCatalogListingTemplate(response.getWriter(), category);
                 break;
-            // We will add the logic for TOTAL_ORDERS, ABC_CLASSIFICATION, etc., here later!
+            case "ALL_STOCK":
+                reportService.generateAllStockInventoryReport(response.getWriter());
+                break;
+            case "TOTAL_DISPATCHED":
+                // Reads request parameters sent natively from React state values
+                reportService.generateDispatchedOrdersReport(response.getWriter(),
+                        response.getParameter("days"), response.getParameter("channel"));
+                break;
+            case "TOTAL_RETURNS":
+                reportService.generateScanBasedReturnReport(response.getWriter(),
+                        request.getParameter("days"), request.getParameter("channel"));
+                break;
+            case "TOTAL_CANCELLED":
+                reportService.generateCancelledOrdersReport(response.getWriter(),
+                        request.getParameter("days"), request.getParameter("channel"));
+                break;
+            case "DISPATCH_LOGS":
+                reportService.generateRawDispatchLogs(response.getWriter(), request.getParameter("days"));
+                break;
             default:
-                response.getWriter().write("Error: Unknown report type requested.");
+                response.getWriter().write("Error: Unknown report request payload context mapping error.");
         }
     }
 }
