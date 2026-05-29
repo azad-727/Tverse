@@ -23,7 +23,8 @@ public class ReportController {
     public void downloadReport(
             @RequestParam String type,
             @RequestParam(defaultValue = "ALL") String category,
-            HttpServletResponse response) throws IOException {
+            @RequestParam(defaultValue = "30") String days,       // Fixed: Binds ?days= from frontend
+            @RequestParam(defaultValue = "ALL") String channel,HttpServletResponse response) throws IOException {
 
         // 1. Generate a clean timestamp for the filename
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
@@ -42,19 +43,18 @@ public class ReportController {
                 break;
             case "TOTAL_DISPATCHED":
                 // Reads request parameters sent natively from React state values
-                reportService.generateDispatchedOrdersReport(response.getWriter(),
-                        response.getParameter("days"), response.getParameter("channel"));
+                reportService.generateDispatchedOrdersReport(response.getWriter(),days,channel);
                 break;
             case "TOTAL_RETURNS":
                 reportService.generateScanBasedReturnReport(response.getWriter(),
-                        request.getParameter("days"), request.getParameter("channel"));
+                        days,channel);
                 break;
             case "TOTAL_CANCELLED":
                 reportService.generateCancelledOrdersReport(response.getWriter(),
-                        request.getParameter("days"), request.getParameter("channel"));
+                        days, channel);
                 break;
             case "DISPATCH_LOGS":
-                reportService.generateRawDispatchLogs(response.getWriter(), request.getParameter("days"));
+                reportService.generateRawDispatchLogs(response.getWriter(), days);
                 break;
             default:
                 response.getWriter().write("Error: Unknown report request payload context mapping error.");

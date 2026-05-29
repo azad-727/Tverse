@@ -127,7 +127,7 @@ public class ReportService {
         }
     }
 
-    public void generateDispatchOrdersReport(PrintWriter writer,String days,String channelFilter) throws IOException {
+    public void generateDispatchedOrdersReport(PrintWriter writer,String days,String channelFilter) throws IOException {
         LocalDateTime startDate = calculateStartDate(days);
         List<SalesOrder> orders = salesOrderRepo.findByStatusAndDateAfter("SHIPPED", startDate);
 
