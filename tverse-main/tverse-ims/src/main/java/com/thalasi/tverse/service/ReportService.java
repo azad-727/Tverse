@@ -28,21 +28,24 @@ public class ReportService {
     private SalesReturnRepo salesReturnRepo;
     @Autowired
     private SalesOrderRepo salesOrderRepo;
+    @Autowired
+    private LiquidationService liquidationService;
+    @Autowired
+    private DashboardSnapshotRepository snapshotRepository;
 
 
+    public void generateCatalogListingTemplate(PrintWriter writer, String categoryFilter) throws IOException {
+        List<productVariant> variants = productVariantRepo.findAll();
 
-    public void generateCatalogListingTemplate(PrintWriter writer,String categoryFilter) throws IOException{
-        List<productVariant> variants= productVariantRepo.findAll();
-
-        String[] headers={
+        String[] headers = {
                 "Variant ID", "SKU", "Parent Product Name", "Category",
                 "Size", "Color", "Regular Price", "Sale Price",
                 "Procurement Cost", "Stock On Hand", "Warehouse Location"
         };
 
-        try(CSVPrinter csvPrinter=new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())){
+        try (CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
 
-            for(productVariant variant:variants){
+            for (productVariant variant : variants) {
                 String parentName = variant.getProduct() != null ? variant.getProduct().getName() : "N/A";
                 String categoryName = (variant.getProduct() != null && variant.getProduct().getCategory() != null)
                         ? variant.getProduct().getCategory().getName() : "Uncategorized";
@@ -70,14 +73,15 @@ public class ReportService {
         }
 
     }
-    public void generateAllStockInventoryReport(PrintWriter writer) throws IOException{
-        List<productVariant> variants=productVariantRepo.findAll();
 
-        String[] headers={
-                "Variant ID", "Parent ID", "Parent Product Name","Category",
+    public void generateAllStockInventoryReport(PrintWriter writer) throws IOException {
+        List<productVariant> variants = productVariantRepo.findAll();
+
+        String[] headers = {
+                "Variant ID", "Parent ID", "Parent Product Name", "Category",
                 "Variant SKU", "Size", "Color",
-                "Stock on Hand", "Stock Committed","Warehouse Location",
-                "Regular Price", "Sale Price","Procurement Cost","Total Stock Value"
+                "Stock on Hand", "Stock Committed", "Warehouse Location",
+                "Regular Price", "Sale Price", "Procurement Cost", "Total Stock Value"
         };
         try (CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
 
@@ -118,7 +122,7 @@ public class ReportService {
         }
     }
 
-    private LocalDateTime calculateStartDate(String days){
+    private LocalDateTime calculateStartDate(String days) {
         try {
             int numericDays = Integer.parseInt(days);
             return LocalDateTime.now().minusDays(numericDays);
@@ -127,7 +131,7 @@ public class ReportService {
         }
     }
 
-    public void generateDispatchedOrdersReport(PrintWriter writer,String days,String channelFilter) throws IOException {
+    public void generateDispatchedOrdersReport(PrintWriter writer, String days, String channelFilter) throws IOException {
         LocalDateTime startDate = calculateStartDate(days);
         List<SalesOrder> orders = salesOrderRepo.findByStatusAndDateAfter("SHIPPED", startDate);
 
@@ -141,45 +145,47 @@ public class ReportService {
             }
         }
     }
-        public void generateCancelledOrdersReport(PrintWriter writer, String days,String channelFilter) throws IOException{
-            LocalDateTime startDate=calculateStartDate(days);
-            List<SalesOrder> cancelledOrders=salesOrderRepo.findByStatusAndDateAfter("CANCELLED",startDate);
 
-            String[] headers = getChannelHeaders(channelFilter);
-            try(CSVPrinter printer = new CSVPrinter(writer,CSVFormat.DEFAULT.builder().setHeader(headers).build())){
-                for(SalesOrder order: cancelledOrders){
-                    if(!channelFilter.equalsIgnoreCase("ALL") &&  !order.getChannel().equalsIgnoreCase(channelFilter)){
-                        continue;
-                    }
-                    printChannelRecord(printer,order,channelFilter);
+    public void generateCancelledOrdersReport(PrintWriter writer, String days, String channelFilter) throws IOException {
+        LocalDateTime startDate = calculateStartDate(days);
+        List<SalesOrder> cancelledOrders = salesOrderRepo.findByStatusAndDateAfter("CANCELLED", startDate);
+
+        String[] headers = getChannelHeaders(channelFilter);
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (SalesOrder order : cancelledOrders) {
+                if (!channelFilter.equalsIgnoreCase("ALL") && !order.getChannel().equalsIgnoreCase(channelFilter)) {
+                    continue;
                 }
+                printChannelRecord(printer, order, channelFilter);
             }
         }
-        public void generateScanBasedReturnReport(PrintWriter writer,String days,String channelFilter) throws IOException{
+    }
 
-            LocalDateTime startDate=calculateStartDate(days);
-            List<SalesReturn> salesReturns=salesReturnRepo.findByReturnDateAfter(startDate);
-            String[] headers = {"Return ID", "Scan Date", "Channel", "Order ID", "Tracking ID", "SKU", "Qty Received", "Type", "Main Reason", "QC Status", "Action", "Selling Price", "Est Loss"};
+    public void generateScanBasedReturnReport(PrintWriter writer, String days, String channelFilter) throws IOException {
 
-            try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
-                for (SalesReturn scan : salesReturns) {
-                    if (!channelFilter.equalsIgnoreCase("ALL") && !scan.getReturnChannel().equalsIgnoreCase(channelFilter)) {
-                        continue;
-                    }
+        LocalDateTime startDate = calculateStartDate(days);
+        List<SalesReturn> salesReturns = salesReturnRepo.findByReturnDateAfter(startDate);
+        String[] headers = {"Return ID", "Scan Date", "Channel", "Order ID", "Tracking ID", "SKU", "Qty Received", "Type", "Main Reason", "QC Status", "Action", "Selling Price", "Est Loss"};
 
-                    // Cross reference pricing parameters automatically
-                    Optional<SalesOrder> originalOrder = salesOrderRepo.findByOrderIdAndSku(scan.getChannelOrderId(), scan.getSku());
-                    java.math.BigDecimal price = originalOrder.map(SalesOrder::getSellingPrice).orElse(java.math.BigDecimal.ZERO);
-                    java.math.BigDecimal loss = price.multiply(java.math.BigDecimal.valueOf(scan.getQty()));
-
-                    printer.printRecord(
-                            scan.getId(), scan.getReturnDate(), scan.getReturnChannel(), scan.getChannelOrderId(),
-                            scan.getTrackingId(), scan.getSku(), scan.getQty(), scan.getReturnType(),
-                            scan.getReturnMainReason(), scan.getQcStatus(), scan.getActionTaken(), price, loss
-                    );
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (SalesReturn scan : salesReturns) {
+                if (!channelFilter.equalsIgnoreCase("ALL") && !scan.getReturnChannel().equalsIgnoreCase(channelFilter)) {
+                    continue;
                 }
+
+                // Cross reference pricing parameters automatically
+                Optional<SalesOrder> originalOrder = salesOrderRepo.findByOrderIdAndSku(scan.getChannelOrderId(), scan.getSku());
+                java.math.BigDecimal price = originalOrder.map(SalesOrder::getSellingPrice).orElse(java.math.BigDecimal.ZERO);
+                java.math.BigDecimal loss = price.multiply(java.math.BigDecimal.valueOf(scan.getQty()));
+
+                printer.printRecord(
+                        scan.getId(), scan.getReturnDate(), scan.getReturnChannel(), scan.getChannelOrderId(),
+                        scan.getTrackingId(), scan.getSku(), scan.getQty(), scan.getReturnType(),
+                        scan.getReturnMainReason(), scan.getQcStatus(), scan.getActionTaken(), price, loss
+                );
             }
         }
+    }
 
 
     public void generateRawDispatchLogs(PrintWriter writer, String days) throws IOException {
@@ -310,6 +316,93 @@ public class ReportService {
         }
 
 
+    }
+    // --- ANALYTICS - ABC REPORT DOWNLOADER
+    public void generateAbcClassificationReport(PrintWriter writer) throws IOException{
+        List<com.thalasi.tverse.model.DailyDashboardSnapshot> snapshots = snapshotRepository.findLatestSnapshotsByMetricType("ABC_ANALYSIS");
+
+        String[] headers={"SKU","ABC Category","Total Revenue","Revenue Contribution %"};
+        try(CSVPrinter printer = new CSVPrinter(writer,CSVFormat.DEFAULT.builder().setHeader(headers).build())){
+            for (com.thalasi.tverse.model.DailyDashboardSnapshot snap : snapshots) {
+                // Enterprise tip: Parse fields natively without full Jackson setups if layout is fixed
+                String json = snap.getMetricValue();
+                String category = extractJsonValue(json, "category");
+                String revenue = extractJsonValue(json, "revenue");
+                String contribution = extractJsonValue(json, "contributionPct");
+
+                printer.printRecord(snap.getMetricKey(), category, revenue, contribution);
+            }
+        }
+    }
+
+    // ------ VARIANT LIFECYCLE csv Download
+    public void generateVariantLifecycleReport(PrintWriter writer,String days,String categoryFilter) throws IOException{
+
+        int numericDays=Integer.parseInt(days);
+        List<com.thalasi.tverse.dto.VariantPerformanceDTO> performances=liquidationService.getVariantLifecycle(numericDays,categoryFilter);
+        String[] headers = {"SKU", "Category", "Units Sold", "Total Revenue Generated", "Lifecycle Status"};
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (com.thalasi.tverse.dto.VariantPerformanceDTO dto : performances) {
+                printer.printRecord(dto.sku, dto.category, dto.unitsSold, dto.revenue, dto.status);
+            }
+        }
+    }
+
+//----- DeadStock Download
+public void generateDeadStockTargetsReport(PrintWriter writer, String days, String categoryFilter) throws IOException {
+    int numericDays = Integer.parseInt(days);
+    List<com.thalasi.tverse.dto.VariantPerformanceDTO> performances =
+            liquidationService.getVariantLifecycle(numericDays, categoryFilter);
+
+    String[] headers = {"SKU", "Category", "Days Without A Single Sale", "Current Physical Stock", "Unit Procurement Cost", "Frozen Capital Exposure"};
+    try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+        for (com.thalasi.tverse.dto.VariantPerformanceDTO dto : performances) {
+            // Isolate strictly non-performing SKUs
+            if ("DEAD_STOCK".equalsIgnoreCase(dto.status)) {
+                // Fetch physical stock parameters to check if capital is truly stuck on shelves
+                Optional<com.thalasi.tverse.model.productVariant> variantOpt = productVariantRepo.findBySku(dto.sku);
+                int physicalStock = variantOpt.map(v -> v.getStockOnHand()).orElse(0);
+
+                // If we have zero sales but also zero stock, it's not hurting our cash flow; skip it!
+                if (physicalStock <= 0) continue;
+
+                java.math.BigDecimal unitCost = variantOpt.map(v -> v.getProcurementCost()).orElse(java.math.BigDecimal.ZERO);
+                java.math.BigDecimal frozenExposure = unitCost.multiply(java.math.BigDecimal.valueOf(physicalStock));
+
+                printer.printRecord(dto.sku, dto.category, days + " Days", physicalStock, unitCost, frozenExposure);
+                }
+            }
+        }
+    }
+    public void generateProcurementActionReport(PrintWriter writer) throws IOException {
+        List<com.thalasi.tverse.model.DailyDashboardSnapshot> snapshots =
+                snapshotRepository.findLatestSnapshotsByMetricType("STOCKOUT_PREDICTOR");
+
+        String[] headers = {"SKU", "Daily Sales Velocity (Units/Day)", "Total Units Sold (30D)", "Days of Inventory Left (DOI)", "Urgency Action Alert Status"};
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (com.thalasi.tverse.model.DailyDashboardSnapshot snap : snapshots) {
+                String json = snap.getMetricValue();
+                String doi = extractJsonValue(json, "doi");
+                String status = extractJsonValue(json, "status");
+                String velocity = extractJsonValue(json, "velocity");
+                String unitsSold = extractJsonValue(json, "units_sold");
+
+                printer.printRecord(snap.getMetricKey(), velocity, unitsSold, doi, status);
+            }
+        }
+    }
+
+    private String extractJsonValue(String json, String key) {
+        try {
+            if (json == null || !json.contains(key)) return "";
+            String[] parts = json.split("\"" + key + "\":");
+            if (parts.length < 2) return "";
+            String val = parts[1].split("[,}]")[0].trim();
+            return val.replace("\"", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
 
 
 }

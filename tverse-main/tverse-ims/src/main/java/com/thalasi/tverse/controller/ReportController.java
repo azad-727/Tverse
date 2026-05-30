@@ -56,6 +56,18 @@ public class ReportController {
             case "DISPATCH_LOGS":
                 reportService.generateRawDispatchLogs(response.getWriter(), days);
                 break;
+            case "ABC_CLASSIFICATION":
+                reportService.generateAbcClassificationReport(response.getWriter());
+                break;
+            case "VARIANT_LIFECYCLE":
+                reportService.generateVariantLifecycleReport(response.getWriter(), days, category);
+                break;
+            case "DEAD_STOCK":
+                reportService.generateDeadStockTargetsReport(response.getWriter(), days, category);
+                break;
+            case "PROCUREMENT":
+                reportService.generateProcurementActionReport(response.getWriter());
+                break;
             default:
                 response.getWriter().write("Error: Unknown report request payload context mapping error.");
         }
