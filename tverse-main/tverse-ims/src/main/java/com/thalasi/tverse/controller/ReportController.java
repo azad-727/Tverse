@@ -24,7 +24,9 @@ public class ReportController {
             @RequestParam String type,
             @RequestParam(defaultValue = "ALL") String category,
             @RequestParam(defaultValue = "30") String days,       // Fixed: Binds ?days= from frontend
-            @RequestParam(defaultValue = "ALL") String channel,HttpServletResponse response) throws IOException {
+            @RequestParam(defaultValue = "ALL") String channel,
+            @RequestParam(defaultValue = "CHILD") String skuLevel,
+            HttpServletResponse response) throws IOException {
 
         // 1. Generate a clean timestamp for the filename
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
@@ -57,7 +59,7 @@ public class ReportController {
                 reportService.generateRawDispatchLogs(response.getWriter(), days);
                 break;
             case "ABC_CLASSIFICATION":
-                reportService.generateAbcClassificationReport(response.getWriter());
+                reportService.generateAbcClassificationReport(response.getWriter(),skuLevel);
                 break;
             case "VARIANT_LIFECYCLE":
                 reportService.generateVariantLifecycleReport(response.getWriter(), days, category);

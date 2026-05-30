@@ -318,10 +318,13 @@ public class ReportService {
 
     }
     // --- ANALYTICS - ABC REPORT DOWNLOADER
-    public void generateAbcClassificationReport(PrintWriter writer) throws IOException{
-        List<com.thalasi.tverse.model.DailyDashboardSnapshot> snapshots = snapshotRepository.findLatestSnapshotsByMetricType("ABC_ANALYSIS");
+    public void generateAbcClassificationReport(PrintWriter writer,String skuLevel) throws IOException{
 
-        String[] headers={"SKU","ABC Category","Total Revenue","Revenue Contribution %"};
+        String metricType="PARENT".equalsIgnoreCase(skuLevel)?"PARENT_ABC_ANALYSIS":"ABC_ANALYSIS";
+
+        List<com.thalasi.tverse.model.DailyDashboardSnapshot> snapshots = snapshotRepository.findLatestSnapshotsByMetricType("ABC_ANALYSIS");
+        String skuHeader="PARENT".equalsIgnoreCase(skuLevel)?"PARENT SKU":"CHILD SKU";
+        String[] headers={skuHeader,"ABC Category","Total Revenue","Revenue Contribution %"};
         try(CSVPrinter printer = new CSVPrinter(writer,CSVFormat.DEFAULT.builder().setHeader(headers).build())){
             for (com.thalasi.tverse.model.DailyDashboardSnapshot snap : snapshots) {
                 // Enterprise tip: Parse fields natively without full Jackson setups if layout is fixed
@@ -403,6 +406,8 @@ public void generateDeadStockTargetsReport(PrintWriter writer, String days, Stri
             return "";
         }
     }
+
+
 
 
 }
