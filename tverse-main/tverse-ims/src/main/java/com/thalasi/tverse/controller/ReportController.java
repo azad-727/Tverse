@@ -26,9 +26,11 @@ public class ReportController {
             @RequestParam(defaultValue = "30") String days,       // Fixed: Binds ?days= from frontend
             @RequestParam(defaultValue = "ALL") String channel,
             @RequestParam(defaultValue = "CHILD") String skuLevel,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) String year,
             HttpServletResponse response) throws IOException {
 
-        System.out.println("REPORT HUB ACCESS -> Type: " + type + " | SKU Level Received: [" + skuLevel + "]");
+        System.out.println("REPORT HUB ACCESS -> Type: " + type + " | SKU Level Received: [" + skuLevel + "] | Context Month/Year: " + month + "-" + year);
 
 
         // 1. Generate a clean timestamp for the filename
@@ -61,6 +63,9 @@ public class ReportController {
             case "DISPATCH_LOGS":
                 reportService.generateRawDispatchLogs(response.getWriter(), days);
                 break;
+            case "RETURN_LOGS": // Added structural route connection for raw log extraction
+                reportService.generateRawReturnLogs(response.getWriter(), days);
+                break;
             case "ABC_CLASSIFICATION":
                 reportService.generateAbcClassificationReport(response.getWriter(),skuLevel);
                 break;
@@ -72,6 +77,15 @@ public class ReportController {
                 break;
             case "PROCUREMENT":
                 reportService.generateProcurementActionReport(response.getWriter());
+                break;
+            case "ALL_LOTS": // New Manufacturing Route
+                reportService.generateAllLotsReport(response.getWriter(), days);
+                break;
+            case "FABRIC_AVAILABILITY": // New Manufacturing Route
+                reportService.generateFabricAvailabilityReport(response.getWriter());
+                break;
+            case "ATTENDANCE_LOG": // New HR Administration Route
+                reportService.generateMonthlyAttendanceLog(response.getWriter(), month, year);
                 break;
             default:
                 response.getWriter().write("Error: Unknown report request payload context mapping error.");

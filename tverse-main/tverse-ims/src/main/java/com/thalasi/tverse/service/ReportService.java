@@ -1,9 +1,6 @@
 package com.thalasi.tverse.service;
 
-import com.thalasi.tverse.model.DailyDispatch;
-import com.thalasi.tverse.model.SalesOrder;
-import com.thalasi.tverse.model.SalesReturn;
-import com.thalasi.tverse.model.productVariant;
+import com.thalasi.tverse.model.*;
 import com.thalasi.tverse.repository.*;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -13,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +30,12 @@ public class ReportService {
     private LiquidationService liquidationService;
     @Autowired
     private DashboardSnapshotRepository snapshotRepository;
+    @Autowired
+    private FabricRepo fabricRepo;
+    @Autowired
+    private ProductionLotRepo productionLotRepo;
+    @Autowired
+    private AttendanceRepo attendanceRepo;
 
 
     public void generateCatalogListingTemplate(PrintWriter writer, String categoryFilter) throws IOException {
@@ -391,6 +395,127 @@ public void generateDeadStockTargetsReport(PrintWriter writer, String days, Stri
                 String unitsSold = extractJsonValue(json, "units_sold");
 
                 printer.printRecord(snap.getMetricKey(), velocity, unitsSold, doi, status);
+            }
+        }
+    }
+
+    public void generateRawReturnLogs(PrintWriter writer,String days) throws IOException{
+        LocalDateTime startDate=calculateStartDate(days);
+        List<SalesReturn> logs=salesReturnRepo.findByReturnDateAfter(startDate);
+
+        String[] headers={"Log ID","Scan Date","Tracking ID","Channel Order ID","SKU","Qty Received","QC Status","Processed By"};
+        try(CSVPrinter printer=new CSVPrinter(writer,CSVFormat.DEFAULT.builder().setHeader(headers).build())){
+            for(SalesReturn log:logs){
+                printer.printRecord(
+                        log.getId(),log.getReturnDate(),log.getTrackingId(),log.getChannelOrderId(),
+                        log.getSku(),log.getQty(),log.getQcStatus(),log.getProcessedBy()
+                );
+            }
+        }
+    }
+
+    public void generateAllLotsReport(PrintWriter writer, String days) throws IOException {
+        LocalDateTime startDate = calculateStartDate(days);
+
+        // Leveraging your dynamic native JPQL filter query by passing null to unneeded constraints!
+        List<ProductionLot> lots = productionLotRepo.filterLots(null, startDate, null, null, null);
+
+        String[] headers = {
+                "Lot ID", "Lot Number", "SKU Code", "Fabric Name", "Fabric Color",
+                "Fabric Used (Kgs)", "Creation Date", "Expected Completion", "Actual Completed Date",
+                "Current Status", "Remarks"
+        };
+
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (ProductionLot lot : lots) {
+                // Safely resolve nested relational mapping data from Fabric Entity
+                String fabricName = lot.getFabric() != null ? lot.getFabric().getFabricName() : "No Fabric Linked";
+                String fabricColor = lot.getFabric() != null ? lot.getFabric().getColor() : "N/A";
+
+                printer.printRecord(
+                        lot.getId(),
+                        lot.getLotNumber() != null ? lot.getLotNumber() : "",
+                        lot.getSkuCode() != null ? lot.getSkuCode() : "",
+                        fabricName,
+                        fabricColor,
+                        lot.getFabricUsedKgs(),
+                        lot.getCreationDate(),
+                        lot.getExpectedDate(),
+                        lot.getCompletedDate() != null ? lot.getCompletedDate() : "",
+                        lot.getStatus() != null ? lot.getStatus() : "INITIALIZED",
+                        lot.getRemarks() != null ? lot.getRemarks() : ""
+                );
+            }
+        }
+    }
+    public void generateFabricAvailabilityReport(PrintWriter writer) throws IOException {
+        List<Fabric> fabrics = fabricRepo.findAll();
+
+        String[] headers = {
+                "Fabric ID", "Fabric Name", "Color", "Vendor Name",
+                "Batch Number", "Total Weight (Kgs)", "Remaining Weight (Kgs)",
+                "Stock Status", "Inbound Date"
+        };
+
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (Fabric fabric : fabrics) {
+                printer.printRecord(
+                        fabric.getId(),
+                        fabric.getFabricName() != null ? fabric.getFabricName() : "",
+                        fabric.getColor() != null ? fabric.getColor() : "",
+                        fabric.getVendorName() != null ? fabric.getVendorName() : "",
+                        fabric.getBatchNumber() != null ? fabric.getBatchNumber() : "",
+                        fabric.getTotalKgs(),
+                        fabric.getRemainingKgs(),
+                        fabric.getStatus() != null ? fabric.getStatus() : "STORED",
+                        fabric.getCreationDate()
+                );
+            }
+        }
+    }
+    public void generateMonthlyAttendanceLog(PrintWriter writer, String month, String year) throws IOException {
+        // Smart Shield: Auto-detect and swap if parameters arrived out of order
+        String targetYear = year;
+        String targetMonth = month;
+
+        if (month != null && month.trim().length() == 4) {
+            targetYear = month;
+            targetMonth = year;
+        }
+
+        int parsedYear = Integer.parseInt(targetYear.trim());
+        int parsedMonth = Integer.parseInt(targetMonth.trim());
+
+        // 1. Compute the strict start and boundary dates safely
+        java.time.LocalDate startDate = java.time.LocalDate.of(parsedYear, parsedMonth, 1);
+        java.time.LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+        // 2. Query your live table using the date boundaries
+        List<AttendanceLog> logs = attendanceRepo.findByDateBetweenOrderByDateDesc(startDate, endDate);
+
+        String[] headers = {
+                "Log Date", "Staff ID", "Staff Name", "First Punch In", "Last Punch Out",
+                "Computed Shift Hours", "Shift Type", "Late Marker", "Daily Status", "Remarks"
+        };
+
+        try (CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+            for (AttendanceLog log : logs) {
+                Long staffId = log.getStaff() != null ? log.getStaff().getId() : null;
+                String staffName = (log.getStaff() != null && log.getStaff().getFullName() != null)
+                        ? log.getStaff().getFullName() : "N/A";
+
+                printer.printRecord(
+                        log.getDate(),
+                        staffId,
+                        staffName,
+                        log.getCheckInTime() != null ? log.getCheckInTime() : "",
+                        log.getCheckOutTime() != null ? log.getCheckOutTime() : "",
+                        log.getWorkedHours(),
+                        log.getShiftType() != null ? log.getShiftType() : "General",
+                        log.isLate() ? "LATE" : "ON TIME",
+                        log.getStatus() != null ? log.getStatus() : "",
+                        log.getRemarks() != null ? log.getRemarks() : ""
+                );
             }
         }
     }
