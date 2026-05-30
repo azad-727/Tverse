@@ -31,4 +31,5 @@ public interface SalesReturnRepo extends JpaRepository<SalesReturn, Long> {
             @Param("channel") String channel,
             @Param("courier") String courier
     );
+    List<SalesReturn> findByReturnDateAfter(LocalDateTime date);
 }

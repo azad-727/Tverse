@@ -19,6 +19,7 @@ import InventoryMapping from './Components/ChannelMapping';
 import AbcDashboard from './Components/analytics/AbcDashboard';
 import AnalyticsMain from './Components/analytics/AnalyticsMain';
 import AttendanceKiosk from './Components/AttendanceKiosk';
+import ReportHub from './Components/reports/ReportHub'
 function App() {
   return (
     <BrowserRouter>
@@ -42,7 +43,8 @@ function App() {
             <Route path="/attendance" element={<AttendanceKiosk />} />
             <Route path="returns/logs" element={<ReturnLogs />}/>
             <Route path="/dispatch/logs" element={<DispatchLogs />} /> 
-            <Route path="/analytics" element={<AnalyticsMain />} />     
+            <Route path="/analytics" element={<AnalyticsMain />} />   
+            <Route path="/reports" element={<ReportHub />}/>  
         </Routes>
       </Layout>
     </BrowserRouter>

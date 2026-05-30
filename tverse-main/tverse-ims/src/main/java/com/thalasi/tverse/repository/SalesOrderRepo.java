@@ -79,4 +79,12 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
             "AND s.orderDate >= :startDate " +
             "GROUP BY s.sku")
     List<SkuVelocityProjection> findSalesVelocityPerSku(@Param("startDate") LocalDateTime startDate);
+
+    @Query("SELECT o FROM SalesOrder o WHERE o.orderStatus = :status AND o.orderDate >= :date")
+    List<SalesOrder> findByStatusAndDateAfter(@Param("status") String status, @Param("date") LocalDateTime date);
+
+    Optional<SalesOrder> findByOrderIdAndSku(String orderId, String sku);
+
+
+
 }
