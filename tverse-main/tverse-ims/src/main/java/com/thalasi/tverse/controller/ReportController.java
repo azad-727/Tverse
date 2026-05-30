@@ -28,6 +28,9 @@ public class ReportController {
             @RequestParam(defaultValue = "CHILD") String skuLevel,
             HttpServletResponse response) throws IOException {
 
+        System.out.println("REPORT HUB ACCESS -> Type: " + type + " | SKU Level Received: [" + skuLevel + "]");
+
+
         // 1. Generate a clean timestamp for the filename
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
 
