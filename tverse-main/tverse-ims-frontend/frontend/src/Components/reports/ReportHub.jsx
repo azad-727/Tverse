@@ -6,6 +6,7 @@ const ReportHub = () => {
     const [masterCategory, setMasterCategory] = useState('INVENTORY');
     const [reportType, setReportType] = useState('CATALOG_TEMPLATE');
     const [isDownloading, setIsDownloading] = useState(false);
+    const [skuLevel, setSkuLevel] = useState('CHILD');
 
     // Dynamic Filters State
     const [availableCategories, setAvailableCategories] = useState([]);
@@ -25,7 +26,7 @@ const ReportHub = () => {
             { id: 'TOTAL_CANCELLED', name: 'Total Cancelled Orders', needsCategory: false, needsDate: true, needsChannel: true }
         ],
         ANALYTICS: [
-            { id: 'ABC_CLASSIFICATION', name: 'ABC Revenue Classification', needsCategory: false, needsDate: true, needsChannel: false },
+            { id: 'ABC_CLASSIFICATION', name: 'ABC Revenue Classification', needsCategory: false, needsDate: true, needsChannel: false , needsSkuLevel: true},
             { id: 'VARIANT_LIFECYCLE', name: 'Variant Lifecycle List', needsCategory: true, needsDate: true, needsChannel: false },
             { id: 'DEAD_STOCK', name: 'Dead Stock Targets (0 Sales)', needsCategory: true, needsDate: true, needsChannel: false },
             { id: 'PROCUREMENT', name: 'Procurement Action List', needsCategory: false, needsDate: false, needsChannel: false }
@@ -65,6 +66,7 @@ const ReportHub = () => {
             if (currentReportConfig.needsCategory) url += `&category=${categoryFilter}`;
             if (currentReportConfig.needsDate) url += `&days=${dateFilter}`;
             if (currentReportConfig.needsChannel) url += `&channel=${channelFilter}`;
+            if (currentReportConfig.needsSkuLevel) url += `&skuLevel=${skuLevel}`;
 
             // 2. Fetch the file as a Blob (Future-proof for when we add JWT Security)
             const response = await axios.get(url, { responseType: 'blob' });
@@ -136,7 +138,7 @@ const ReportHub = () => {
                             </div>
 
                             {/* --- STEP 3: DYNAMIC FILTERS --- */}
-                            {(currentReportConfig.needsCategory || currentReportConfig.needsDate || currentReportConfig.needsChannel) && (
+                            {(currentReportConfig.needsCategory || currentReportConfig.needsDate || currentReportConfig.needsChannel || currentReportConfig.needsSkuLevel) && (
                                 <div className="p-3 bg-light rounded border mb-4">
                                     <label className="form-label fw-bold text-muted small text-uppercase mb-3"><i className="bi bi-funnel me-1"></i> Data Filters</label>
                                     
@@ -172,15 +174,27 @@ const ReportHub = () => {
                                         {currentReportConfig.needsChannel && (
                                             <div className="col-md-6">
                                                 <label className="form-label small fw-bold">Sales Channel</label>
-                                                <select className="form-select form-select-sm" value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)}>
-                                                    <option value="ALL">All Marketplaces</option>
-                                                    <option value="AMAZON">Amazon</option>
-                                                    <option value="MEESHO">Meesho</option>
-                                                    <option value="FLIPKART">Flipkart</option>
-                                                    <option value="MYNTRA">Myntra</option>
+                                            <select className="form-select form-select-sm" value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)}>
+                                                <option value="ALL">All Marketplaces</option>
+                                                <option value="AMAZON">Amazon</option>
+                                                <option value="COCOBLU">Amazon - Cocoblu</option> {/* Added option */}
+                                                <option value="FLIPKART">Flipkart</option>
+                                                <option value="MEESHO">Meesho</option>
+                                                <option value="FLIPKART">Flipkart</option>
+                                            </select>
+                                            </div>
+                                        )}
+
+                                        {currentReportConfig.needsSkuLevel && (
+                                            <div className="col-md-12">
+                                                <label className="form-label small fw-bold">Analysis Aggregation Level</label>
+                                                <select className="form-select form-select-sm fw-bold text-primary" value={skuLevel} onChange={(e) => setSkuLevel(e.target.value)}>
+                                                    <option value="CHILD">Child SKU Level (Individual Sizes & Colors)</option>
+                                                    <option value="PARENT">Parent Style Level (Merged Master Designs)</option>
                                                 </select>
                                             </div>
                                         )}
+
                                     </div>
                                 </div>
                             )}
