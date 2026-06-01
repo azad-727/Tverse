@@ -11,6 +11,6 @@ import java.util.Optional;
 public interface StaffRepo extends JpaRepository<Staff,Long> {
 
     List<Staff> findByIsActiveTrue();
-
+    Optional<Staff> findByPhoneNumber(Long phoneNumber);
     Optional<Staff> findById(Long staffId);
 }
