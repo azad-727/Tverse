@@ -40,15 +40,23 @@ public class SecurityConfig {
 
                             // --- ROLE-BASED ACCESS CONTROL (RBAC) MATRIX RULES ---
                             // 1. Financial & Strategic Analytics: Restricted to Owners and Admin classes
-                            .requestMatchers("/api/reports/download?type=ABC_CLASSIFICATION").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
-                            .requestMatchers("/api/reports/download?type=DEAD_STOCK").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
+                            .requestMatchers(req -> "/api/reports/download".equals(req.getServletPath()) &&
+                                    ("ABC_CLASSIFICATION".equals(req.getParameter("type")) ||
+                                            "DEAD_STOCK".equals(req.getParameter("type")) ||
+                                            "ATTENDANCE_LOG".equals(req.getParameter("type")))
+                            ).hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
 
                             // 2. HR Management: Clear to Super Admin, Admin, and Owner tags
                             .requestMatchers("/api/reports/download?type=ATTENDANCE_LOG").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
 
+                            // Extra
+                            .requestMatchers("/api/attendance/staff/add").hasAnyRole("SUPER_ADMIN","ADMIN","OWNER")
+
                             // 3. General Warehouse Operations: Accessible by Employees as well
-                            .requestMatchers("/api/reports/download?type=ALL_STOCK").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")
-                            .requestMatchers("/api/reports/download?type=CATALOG_TEMPLATE").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")
+                            .requestMatchers(req -> "/api/reports/download".equals(req.getServletPath()) &&
+                                    ("ALL_STOCK".equals(req.getParameter("type")) ||
+                                            "CATALOG_TEMPLATE".equals(req.getParameter("type")))
+                            ).hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")
 
                             // Fallback default catch-all: all other system calls require general validation clearance
                             .anyRequest().authenticated()

@@ -11,8 +11,9 @@ import java.util.Date;
 
 
 @Component
-public class JwtUtil {
-    private final String SECRET_KEY_BASE64="YTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI3Y2hhbGFzaXR2ZXJzZWlwYm91bmRlcnNlY3VyaXR5bGF5ZXJrZXk=";
+    public class JwtUtil {
+    @org.springframework.beans.factory.annotation.Value("${tverse.jwt.secret}")
+    private String SECRET_KEY_BASE64;
     private final long EXPIRATION_TIME_MS=1000*60*60*12;
 
     private SecretKey getSigningKey(){
