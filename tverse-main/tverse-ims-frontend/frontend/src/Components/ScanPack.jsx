@@ -27,23 +27,47 @@ const ScanPack = () => {
 
     const loadOptions = async () => {
         try {
+            const token = localStorage.getItem('tverse_token');
+            
+            // Explicit header configuration wrapper block
+            const authConfig = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            // FIXED: Appended authConfig as the second argument to pass the token
             const [staffRes, channelRes, courierRes] = await Promise.all([
-                axios.get("http://localhost:8080/api/config/STAFF"),
-                axios.get("http://localhost:8080/api/config/CHANNEL"),
-                axios.get("http://localhost:8080/api/config/COURIER")
+                axios.get("http://localhost:8080/api/config/STAFF", authConfig),
+                axios.get("http://localhost:8080/api/config/CHANNEL", authConfig),
+                axios.get("http://localhost:8080/api/config/COURIER", authConfig)
             ]);
+
             setOptions({ staff: staffRes.data, channel: channelRes.data, courier: courierRes.data });
             if(staffRes.data.length > 0) setSession(prev => ({...prev, staffName: staffRes.data[0].value}));
             if(channelRes.data.length > 0) setSession(prev => ({...prev, channel: channelRes.data[0].value}));
             if(courierRes.data.length > 0) setSession(prev => ({...prev, courierPartner: courierRes.data[0].value}));
-        } catch (err) { console.error("Config Load Error", err); }
+       
+        } catch (err) {
+             console.error("Config Load Error", err);
+         }
     };
 
     const handleAddOption = async (category, keyInState) => {
         const newValue = prompt(`Enter new ${category.toLowerCase()} name:`);
         if (!newValue) return;
         try {
-            const res = await axios.post("http://localhost:8080/api/config/add", { category, value: newValue });
+            const token = localStorage.getItem('tverse_token');
+            const authConfig = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            // FIXED: Appended authConfig as the third argument for the POST request
+            const res = await axios.post("http://localhost:8080/api/config/add", { category, value: newValue }, authConfig);
             setOptions(prev => ({ ...prev, [keyInState]: [...prev[keyInState], res.data] }));
             const sessionKey = category === 'STAFF' ? 'staffName' : category === 'CHANNEL' ? 'channel' : 'courierPartner';
             setSession(prev => ({...prev, [sessionKey]: newValue}));
@@ -86,7 +110,16 @@ const ScanPack = () => {
         const payload = { ...session, verticalBarcode: barcodes.vCode, horizontalBarcode: barcodes.hCode };
 
         try {
-            const res = await axios.post("http://localhost:8080/api/dispatch/scan", payload);
+            const token = localStorage.getItem('tverse_token');
+            const authConfig = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            // FIXED: Appended authConfig as the third argument to pass the token down to dispatch/scan
+            const res = await axios.post("http://localhost:8080/api/dispatch/scan", payload, authConfig);
             
             // 1. Success State
             setScanStatus("SUCCESS");

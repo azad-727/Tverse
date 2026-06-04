@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 
 const AllInventoryView = () => {
     const [products, setProducts] = useState([]);
@@ -16,7 +16,7 @@ const AllInventoryView = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await axios.get("http://localhost:8080/api/catalog/list");
+            const res = await apiClient.get("/api/catalog/list");
             setProducts(res.data);
             setLoading(false);
         } catch (error) {
@@ -37,7 +37,7 @@ const AllInventoryView = () => {
 
     const saveEdit = async (variantId) => {
         try {
-            await axios.put("http://localhost:8080/api/catalog/quick-update", {
+            await apiClient.put("/api/catalog/quick-update", {
                 variantId: variantId,
                 stock: editForm.stock,
                 cost: editForm.cost
@@ -66,6 +66,20 @@ const AllInventoryView = () => {
 
     return (
         <div>
+            <style>{`
+            .product-name-truncate {
+                max-width: 250px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            @media (max-width: 768px) {
+                .product-name-truncate {
+                    max-width: 140px; /* Squeezes text down dynamically on small screens */
+                }
+            }
+        `}</style>
+
             {/* Toolbar */}
             <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="input-group" style={{ maxWidth: '350px' }}>
@@ -78,22 +92,19 @@ const AllInventoryView = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button className="btn btn-outline-secondary btn-sm" onClick={fetchProducts}>
-                    <i className="bi bi-arrow-clockwise"></i> Refresh
-                </button>
             </div>
 
             {/* Inventory Table */}
             <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0 border">
+                <table className="table table-hover align-middle mb-0 border" style={{ minWidth: '800px' }}>
                     <thead className="table-light">
                         <tr>
-                            <th style={{width: '15%'}}>Location</th>
-                            <th style={{width: '20%'}}>SKU / Variant</th>
-                            <th style={{width: '35%'}}>Product Name</th>
-                            <th style={{width: '10%'}} className="text-center">Stock</th>
-                            <th style={{width: '10%'}}>Cost</th>
-                            <th style={{width: '10%'}} className="text-center">Action</th>
+                            <th style={{width: '110px'}}>Location</th>
+                            <th style={{width: '130px'}}>SKU / Variant</th>
+                            <th style={{width: '220px'}}>Product Name</th>
+                            <th style={{width: '110px'}} className="text-center">Avaliable Qty</th>
+                            <th style={{width: '100px'}}>Cost</th>
+                            <th style={{width: '100px'}} className="text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -153,8 +164,12 @@ const AllInventoryView = () => {
                                 ) : (
                                     <>
                                         <td className="text-center">
-                                            <span className={`badge fs-6 ${p.stock > 0 ? 'bg-success' : 'bg-danger'}`}>
-                                                {p.stock}
+                                            <span className={`badge rounded-pill px-2.5 py-1.5 font-monospace ${
+                                           p.stock > 15 ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' : 
+                                           p.stock > 0 ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25' : 
+                                            'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25'
+                                       }`}>
+                                            {p.stock} Qty
                                             </span>
                                         </td>
                                         <td className="small text-muted">₹{p.costPrice}</td>

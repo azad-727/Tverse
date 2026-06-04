@@ -383,7 +383,7 @@ const OrderManagement = () => {
                     <p className="text-muted small mb-0">Manage shipments, labels, and dispatch processing.</p>
                 </div>
                 <div className="d-flex gap-2">
-                <button className="btn btn-light border shadow-sm"><i className="bi bi-cloud-download me-2"></i>Reports</button>
+                <button className="btn btn-light border shadow-sm" onClick={()=>window.location.href='/reports'}><i className="bi bi-cloud-download me-2"></i>Reports</button>
                 <button className="btn btn-success shadow-sm" onClick={()=>window.location.href='/orders/create'}><i className="bi bi-plus-lg me-2"></i>Create Manual Order</button>
                  <button  className="btn btn-dark shadow-sm" onClick={()=>window.location.href='/dispatch/scan'}>
                  <i className="bi bi-upc-scan me-2"></i> Scan & Pack

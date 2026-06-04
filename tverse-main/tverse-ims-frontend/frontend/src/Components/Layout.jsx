@@ -61,7 +61,7 @@ const Layout = ({ children }) => {
                     <Link to="/attendance" className={`sidebar-link text-decoration-none ${isActive('/attendance')}`}>
                         <i className="bi bi-clock-history me-3 fs-5"></i> Attendance
                     </Link>
-                    <Link to="/inventory/mapping" className={`sidebar-link text-decoration-none ${isActive('/attendance')}`}>
+                    <Link to="/inventory/mapping" className={`sidebar-link text-decoration-none ${isActive('/inventory/mapping')}`}>
                     <i className="bi bi-shop-window me-3 fs-5"></i>Channels
                     </Link>
                     

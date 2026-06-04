@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 import tverseLogo from '../../assets/wordmark-logo png.png'; 
 import loginVideo from '../../assets/login-video.mp4'; 
 
@@ -15,7 +15,7 @@ const Login = ({ onLoginSuccess }) => {
         setIsLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:8080/api/auth/login', {
+            const response = await apiClient.post('/api/auth/login', {
                 phoneNumber: phoneNumber.trim(),
                 securityPin: securityPin.trim()
             });

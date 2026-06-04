@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 
 const QuickInbound = () => {
     const [skuInput, setSkuInput] = useState("");
@@ -26,7 +26,7 @@ const QuickInbound = () => {
                 
                 // Let's assume we call the detail endpoint we made earlier, but we need Variant ID.
                 // We actually need a "Get By SKU" endpoint. Let's add that to backend next.
-                const res = await axios.get(`http://localhost:8080/api/catalog/search?sku=${skuInput}`);
+                const res = await apiClient.get(`/api/catalog/search?sku=${skuInput.trim()}`);
                 if(res.data) {
                     setScannedProduct(res.data);
                     setSkuInput(""); // Clear for quantity entry
@@ -48,10 +48,10 @@ const QuickInbound = () => {
                 quantity: parseInt(qty),
                 operation: operation, // "ADD" or "DEDUCT"
                 reason: "Quick Scanner " + operation,
-                performedBy: "ScannerUser"
+                performedBy: localStorage.getItem('tverse_user') || "Scanner Station"
             };
 
-            await axios.post("http://localhost:8080/api/inventory/adjust", payload);
+            await apiClient.post("/api/inventory/adjust", payload);
             
             // Add to local history log
             setHistory([{
@@ -74,8 +74,8 @@ const QuickInbound = () => {
     };
 
     return (
-        <div className="row">
-            <div className="col-md-6">
+        <div className="row g-4">
+            <div className="col-12 col-md-6">
                 <div className="card bg-light border-0 p-4 text-center">
                     <i className="bi bi-upc-scan fs-1 text-muted mb-3"></i>
                     <h5>Scan Barcode</h5>
@@ -125,7 +125,7 @@ const QuickInbound = () => {
                 )}
             </div>
 
-            <div className="col-md-6">
+            <div className="col-12 col-md-6">
                 <h6 className="fw-bold text-muted">Recent Scans</h6>
                 <ul className="list-group">
                     {history.map((h, i) => (
@@ -134,8 +134,10 @@ const QuickInbound = () => {
                                 <span className="fw-bold d-block">{h.sku}</span>
                                 <small className="text-muted">{h.name}</small>
                             </div>
-                            <span className={`badge ${h.qty.includes('+') ? 'bg-success' : 'bg-danger'} rounded-pill`}>{h.qty}</span>
-                        </li>
+                            <span className={`badge ${h.qty.includes('+') ? 'bg-success' : 'bg-danger'} rounded-pill font-monospace`}>
+                                {h.qty} Qty
+                            </span>
+                            </li>
                     ))}
                     {history.length === 0 && <li className="list-group-item text-center text-muted">No scans yet</li>}
                 </ul>
