@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 import { useNavigate } from 'react-router-dom';
 
 const CreateManualOrder = () => {
@@ -31,7 +31,7 @@ const CreateManualOrder = () => {
 
     const fetchCatalog = async () => {
         try {
-            const res = await axios.get("http://localhost:8080/api/catalog/list");
+            const res = await apiClient.get("/api/catalog/list");
             setProducts(res.data);
             setFilteredProducts(res.data);
         } catch (err) {
@@ -119,7 +119,7 @@ const CreateManualOrder = () => {
         };
 
         try {
-            await axios.post("http://localhost:8080/api/orders/flow/manual", payload);
+            await apiClient.post("/api/orders/flow/manual", payload);
             alert("✅ Order Placed Successfully!");
             navigate('/orders'); // Redirect to Order List
         } catch (error) {
@@ -134,22 +134,55 @@ const CreateManualOrder = () => {
     const getImageUrl = (path) => {
         if (!path) return "https://via.placeholder.com/50";
         if (path.startsWith("http")) return path;
-        return `http://localhost:8080/${path}`;
+        return `${apiClient.defaults.baseURL || 'http://localhost:8080'}/${path}`;
     };
 
     return (
-        <div className="container-fluid p-0">
-            <div className="row g-0" style={{height: 'calc(100vh - 80px)'}}>
+        
+        <div className="container-fluid p-0 overflow-hidden">
+            <style>{`
+                .tverse-pos-frame {
+                    height: calc(100vh - 56px);
+                }
+                .tverse-product-grid-card {
+                    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+                }
+                .tverse-product-grid-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 16px -4px rgba(0,0,0,0.1) !important;
+                }
+                
+                /* MOBILE LAYOUT CORRECTIONS (Stacks blocks cleanly and unlocks height bounds) */
+                @media (max-width: 767.98px) {
+                    .tverse-pos-frame {
+                        height: auto !important;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    .tverse-catalog-panel {
+                        height: 50vh !important; /* Locks catalog view to a scrollable half-screen pane */
+                        padding: 16px !important;
+                    }
+                    .tverse-cart-panel {
+                        height: auto !important;
+                        box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.1) !important;
+                        border-left: none !important;
+                        border-top: 1px solid #e2e8f0;
+                    }
+                }
+            `}</style>
+
+            <div className="row g-0 stverse-pos-frame">
                 
                 {/* --- LEFT: PRODUCT CATALOG --- */}
-                <div className="col-md-8 p-4 bg-light overflow-auto h-100">
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h4 className="fw-bold m-0">Select Products</h4>
+                <div className="col-12 col-md-8 p-4 bg-light overflow-auto h-100 tverse-catalog-panel">
+                    <div className="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center  gap-3 mb-4">
+                        <h4 className="fw-bold m-0" style={{ letterSpacing: '-0.5px' }}>Select Products</h4>
                         <input 
                             type="text" 
-                            className="form-control" 
+                            className="form-control shadow-none bg-white" 
                             placeholder="Search SKU or Name..." 
-                            style={{maxWidth: '300px'}}
+                            style={{maxWidth: '100%', width: '320px'}}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             autoFocus
@@ -174,11 +207,14 @@ const CreateManualOrder = () => {
                                 </div>
                             </div>
                         ))}
+                        {filteredProducts.length === 0 && (
+                            <div className="col-12 text-center p-5 text-muted small">No active listings match your current filter keywords.</div>
+                        )}
                     </div>
                 </div>
 
                 {/* --- RIGHT: CART & CUSTOMER --- */}
-                <div className="col-md-4 bg-white border-start h-100 d-flex flex-column shadow-lg">
+                <div className="col-md-4 bg-white border-start h-100 d-flex flex-column shadow-lg tverse-cart-panel">
                     
                     {/* Customer Form */}
                     <div className="p-4 border-bottom bg-light">
@@ -206,10 +242,10 @@ const CreateManualOrder = () => {
                     </div>
 
                     {/* Cart Items (Scrollable) */}
-                    <div className="flex-grow-1 p-3 overflow-auto">
+                    <div className="flex-grow-1 p-2 p-md-3 overflow-auto" style={{ minHeight: '180px' }}>
                         {cart.length === 0 ? (
                             <div className="text-center text-muted mt-5">
-                                <i className="bi bi-cart-x fs-1"></i>
+                                <i className="bi bi-cart-dash display-6 d-block mb-2"></i>
                                 <p>Cart is Empty</p>
                             </div>
                         ) : (
@@ -217,9 +253,9 @@ const CreateManualOrder = () => {
                                 <thead>
                                     <tr>
                                         <th>Item</th>
-                                        <th className="text-center">Qty</th>
-                                        <th className="text-end">Total</th>
-                                        <th></th>
+                                        <th className="text-center" style={{ width: '90px' }}> Qty</th>
+                                        <th className="text-end" style={{ width: '80px' }}>Total</th>
+                                        <th style={{ width: '30px' }}></th>
                                     </tr>
                                 </thead>
                                 <tbody>
