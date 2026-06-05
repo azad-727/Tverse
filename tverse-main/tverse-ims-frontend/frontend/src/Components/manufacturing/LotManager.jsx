@@ -1,26 +1,21 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 
 const LotManager = () => {
-    // --- STATE ---
     const [lots, setLots] = useState([]);
     const [fabrics, setFabrics] = useState([]);
     
-    // UI Toggles
     const [showCreate, setShowCreate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
-    const [showFilter, setShowFilter] = useState(false); // New: Toggle Filter Bar
+    const [showFilter, setShowFilter] = useState(false);
 
-    // Selection
     const [selectedLot, setSelectedLot] = useState(null); 
     const [editingLot, setEditingLot] = useState(null);   
     
-    // Action State
     const [movingLot, setMovingLot] = useState(null);
     const [nextStatus, setNextStatus] = useState("");
     const [rejections, setRejections] = useState({});
 
-    // Filter State (New)
     const [filters, setFilters] = useState({
         status: "",
         startDateFrom: "",
@@ -29,7 +24,6 @@ const LotManager = () => {
         expDateTo: ""
     });
 
-    // Forms
     const [newLot, setNewLot] = useState({ skuCode: "", fabricId: "", fabricUsedKgs: "", expectedDate: "", remarks: "" });
     const [sizeInput, setSizeInput] = useState({ S: 0, M: 0, L: 0, XL: 0, XXL: 0 });
 
@@ -38,25 +32,27 @@ const LotManager = () => {
     useEffect(() => { fetchLots(); fetchFabrics(); }, []);
 
     const fetchLots = async () => { 
-        // Logic: Check if filters exist, else fetch all
         const params = new URLSearchParams(filters);
-        // Clean empty params
         for (const [key, value] of params.entries()) { if (!value) params.delete(key); }
         
         const url = params.toString() 
-            ? `http://localhost:8080/api/manufacturing/lot/filter?${params.toString()}`
-            : "http://localhost:8080/api/manufacturing/lots";
+            ? `/api/manufacturing/lot/filter?${params.toString()}`
+            : `/api/manufacturing/lots`;
 
         try {
-            const res = await axios.get(url); 
+            const res = await apiClient.get(url); // ✅ FIXED
             setLots(res.data);
         } catch(e) { console.error(e); }
     };
     
-    const fetchFabrics = async () => { const res = await axios.get("http://localhost:8080/api/manufacturing/fabrics"); setFabrics(res.data); };
+    const fetchFabrics = async () => {
+        try {
+            const res = await apiClient.get("/api/manufacturing/fabrics"); // ✅ FIXED
+            setFabrics(res.data);
+        } catch(e) { console.error(e); }
+    };
 
-    // --- HELPERS ---
-    const calculateTotalQty = (lot) => (lot.sizedBreakdown|| lot.sizeBreakdown ||[]).reduce((sum, item) => sum + item.plannedQty, 0);
+    const calculateTotalQty = (lot) => (lot.sizedBreakdown || lot.sizeBreakdown || []).reduce((sum, item) => sum + item.plannedQty, 0);
     const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString() : "N/A";
     
     const getStatusColor = (status) => {
@@ -65,43 +61,40 @@ const LotManager = () => {
         if(status === 'STITCHING') return 'stitching';
         if(status === 'FINISHING') return 'finishing';
         if(status === 'COMPLETED') return 'completed';
-        if(status === 'CANCELLED') return 'bg-secondary text-white'; // New Color
+        if(status === 'CANCELLED') return 'bg-secondary text-white';
         return 'new';
     };
 
-    // --- ACTIONS ---
     const handleCreateLot = async () => {
         const sizeMap = {};
         Object.keys(sizeInput).forEach(k => { if(sizeInput[k] > 0) sizeMap[k] = parseInt(sizeInput[k]); });
         try {
-            await axios.post("http://localhost:8080/api/manufacturing/lot/create", { ...newLot, sizedBreakdown: sizeMap });
+            await apiClient.post("/api/manufacturing/lot/create", { ...newLot, sizedBreakdown: sizeMap }); // ✅ FIXED
             alert("✅ Production Order Created"); setShowCreate(false); fetchLots();
         } catch (e) { alert("Failed: " + e.response?.data); }
     };
 
     const handleStageMove = async () => {
         try {
-            await axios.post("http://localhost:8080/api/manufacturing/lot/status", {
+            await apiClient.post("/api/manufacturing/lot/status", { // ✅ FIXED
                 lotId: movingLot.id, newStatus: nextStatus, rejections: rejections
             });
             setMovingLot(null); fetchLots(); setSelectedLot(null); 
         } catch (e) { alert("Update Failed"); }
     };
 
-    // New: Cancel Lot
     const handleCancelLot = async (id) => {
         if(!confirm("Are you sure you want to CANCEL this lot? Process will stop.")) return;
         try {
-            await axios.post(`http://localhost:8080/api/manufacturing/lot/cancel/${id}`);
+            await apiClient.post(`/api/manufacturing/lot/cancel/${id}`); // ✅ FIXED
             fetchLots();
         } catch(e) { alert("Cancel Failed"); }
     };
 
-    // New: Delete Lot
     const handleDeleteLot = async (id) => {
         if(!confirm("⚠️ DANGER: Permanently Delete? This cannot be undone.")) return;
         try {
-            await axios.delete(`http://localhost:8080/api/manufacturing/lot/delete/${id}`);
+            await apiClient.delete(`/api/manufacturing/lot/delete/${id}`); // ✅ FIXED
             fetchLots();
         } catch(e) { alert("Delete Failed"); }
     };
@@ -113,14 +106,12 @@ const LotManager = () => {
 
     return (
         <div>
-            {/* --- HEADER --- */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="fw-bold text-dark">Production Floor</h4>
                     <p className="text-muted small mb-0">Track work orders, stages, and output.</p>
                 </div>
                 <div className="d-flex gap-2">
-                    {/* Toggle Filter Button */}
                     <button className={`btn ${showFilter ? 'btn-secondary' : 'btn-light'} border`} onClick={() => setShowFilter(!showFilter)}>
                         <i className="bi bi-funnel-fill me-2"></i> Filters
                     </button>
@@ -130,7 +121,6 @@ const LotManager = () => {
                 </div>
             </div>
 
-            {/* --- NEW: FILTER BAR (Collapsible) --- */}
             {showFilter && (
                 <div className="bg-light p-3 rounded mb-4 border shadow-sm">
                     <div className="row g-3">
@@ -162,14 +152,13 @@ const LotManager = () => {
                         <div className="col-md-2 d-flex align-items-end">
                             <button className="btn btn-outline-secondary btn-sm w-100" onClick={() => {
                                 setFilters({ status: "", startDateFrom: "", startDateTo: "", expDateFrom: "", expDateTo: "" });
-                                setTimeout(fetchLots, 100); // Hack to trigger refresh after clear
+                                setTimeout(fetchLots, 100);
                             }}>Reset</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* --- PRO TABLE --- */}
             <div className="pro-table-container">
                 <table className="pro-table">
                     <thead>
@@ -184,7 +173,6 @@ const LotManager = () => {
                             <th className="text-end">Actions</th>
                         </tr>
                     </thead>
-                    
                     <tbody>
                         {lots.map(lot => (
                             <tr key={lot.id}>
@@ -208,8 +196,6 @@ const LotManager = () => {
                                     <button className="btn btn-sm btn-light border me-1" title="Edit Info" onClick={() => { setEditingLot(lot); setShowEdit(true); }}>
                                         <i className="bi bi-pencil"></i>
                                     </button>
-                                    
-                                    {/* Action Button Logic */}
                                     {lot.status !== 'COMPLETED' && lot.status !== 'CANCELLED' && (
                                         <>
                                             <button 
@@ -223,19 +209,14 @@ const LotManager = () => {
                                             >
                                                 Next <i className="bi bi-arrow-right"></i>
                                             </button>
-                                            
-                                            {/* Cancel Button */}
                                             <button className="btn btn-sm btn-outline-danger me-1" title="Cancel Lot" onClick={() => handleCancelLot(lot.id)}>
                                                 <i className="bi bi-x-circle"></i>
                                             </button>
                                         </>
                                     )}
-
-                                    {/* Delete Button (Only for Admin/Cleanup) */}
                                     <button className="btn btn-sm btn-link text-muted" title="Delete Permanent" onClick={() => handleDeleteLot(lot.id)}>
                                         <i className="bi bi-trash"></i>
                                     </button>
-
                                 </td>
                             </tr>
                         ))}
@@ -244,11 +225,6 @@ const LotManager = () => {
                 {lots.length === 0 && <div className="p-5 text-center text-muted">No lots found.</div>}
             </div>
 
-            {/* --- DRAWER, CREATE MODAL, MOVE MODAL, EDIT MODAL (Keep these exactly as they were in your previous code) --- */}
-            {/* I am omitting the bottom modals to save space, but DO NOT DELETE THEM from your file. */}
-            {/* Copy paste your existing modals here. */}
-            
-            {/* ... Paste Drawer code ... */}
             <div className={`drawer-backdrop ${selectedLot ? 'open' : ''}`} onClick={() => setSelectedLot(null)}></div>
             <div className={`drawer-panel ${selectedLot ? 'open' : ''}`} style={{width: '400px'}}>
                {selectedLot && (
@@ -260,7 +236,6 @@ const LotManager = () => {
                             </div>
                             <button className="btn-close" onClick={() => setSelectedLot(null)}></button>
                         </div>
-                        
                         <div className="drawer-body">
                             <div className="lot-stat-grid">
                                 <div className="stat-box">
@@ -276,7 +251,6 @@ const LotManager = () => {
                                     <span>{selectedLot.fabricUsedKgs} kgs</span>
                                 </div>
                             </div>
-
                             <h6 className="fw-bold mt-4 mb-2 text-muted small">SIZE & QUALITY BREAKDOWN</h6>
                             <div className="matrix-table">
                                 <table className="w-100">
@@ -289,7 +263,7 @@ const LotManager = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(selectedLot.sizedBreakdown|| selectedLot.sizeBreakdown || []).map(item => (
+                                        {(selectedLot.sizedBreakdown || selectedLot.sizeBreakdown || []).map(item => (
                                             <tr key={item.id}>
                                                 <td className="fw-bold bg-light">{item.size}</td>
                                                 <td>{item.plannedQty}</td>
@@ -300,17 +274,14 @@ const LotManager = () => {
                                     </tbody>
                                 </table>
                             </div>
-
                             <div className="mt-4 p-3 bg-light rounded border">
                                 <div className="mb-2"><strong className="small text-muted">REMARKS:</strong></div>
                                 <div>{selectedLot.remarks || "No remarks entered."}</div>
                             </div>
-                            
                             <div className="mt-3 text-muted small">
                                 Started: {new Date(selectedLot.creationDate).toLocaleString()}
                             </div>
                         </div>
-
                         <div className="p-3 border-top bg-light text-end">
                             <button className="btn btn-outline-dark" onClick={() => window.print()}><i className="bi bi-printer me-2"></i>Print Job Card</button>
                         </div>
@@ -318,8 +289,7 @@ const LotManager = () => {
                 )}
             </div>
 
-            {/* ... Paste Create Modal ... */}
-             {showCreate && (
+            {showCreate && (
                 <div className="modal d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
                     <div className="modal-dialog modal-lg modal-dialog-centered">
                         <div className="modal-content shadow border-0">
@@ -352,7 +322,6 @@ const LotManager = () => {
                                         <label className="form-label small fw-bold">Remarks</label>
                                         <textarea className="form-control" rows="2" onChange={e => setNewLot({...newLot, remarks: e.target.value})}></textarea>
                                     </div>
-                                    
                                     <div className="col-12">
                                         <div className="p-3 bg-light border rounded">
                                             <h6 className="fw-bold small mb-3">Size Plan</h6>
@@ -377,7 +346,6 @@ const LotManager = () => {
                 </div>
             )}
 
-            {/* ... Paste Move Modal ... */}
             {movingLot && (
                 <div className="modal d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
                     <div className="modal-dialog modal-dialog-centered">
@@ -394,7 +362,6 @@ const LotManager = () => {
                                             <tr><th>Size</th><th>Planned</th><th className="text-danger">Rejections (Qty)</th></tr>
                                         </thead>
                                         <tbody>
-                                            {/* SAFETY: Ensure array exists before mapping */}
                                             {(movingLot.sizedBreakdown || movingLot.sizeBreakdown || []).map(item => (
                                                 <tr key={item.id}>
                                                     <td className="fw-bold">{item.size}</td>
@@ -425,7 +392,6 @@ const LotManager = () => {
                 </div>
             )}
 
-            {/* ... Paste Edit Modal ... */}
             {showEdit && (
                 <div className="modal d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
                     <div className="modal-dialog modal-dialog-centered">
