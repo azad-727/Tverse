@@ -69,6 +69,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/staff/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
                         .requestMatchers("/api/attendance/staff/add").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
 
+                        .requestMatchers("/api/orders/generate-picklist", "/api/orders/picklist/**", "/api/orders/flow/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
+
                         // 6. METADATA DROPDOWN CONFIGURATION ROUTING PATHWAYS
                         .requestMatchers("/api/config/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")
 
