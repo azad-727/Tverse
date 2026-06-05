@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const StaffManager = () => {
     const [activeTab, setActiveTab] = useState('directory'); // 'directory' or 'logs'
@@ -22,7 +22,7 @@ const StaffManager = () => {
     }, [activeTab]);
 
     const fetchStaff = async () => {
-        const res = await axios.get("http://localhost:8080/api/attendance/staff/all");
+        const res = await apiClient.get("/api/attendance/staff/all");
         setStaffList(res.data);
     };
 
@@ -31,14 +31,14 @@ const StaffManager = () => {
         if(!filters.staffId) params.delete("staffId");
         
         try {
-            const res = await axios.get(`http://localhost:8080/api/attendance/history?${params}`);
+            const res = await apiClient.get(`/api/attendance/history?${params}`);
             setLogs(res.data);
         } catch (e) { alert("Error fetching logs"); }
     };
 
     const handleUpdateStaff = async () => {
         try {
-            await axios.put(`http://localhost:8080/api/attendance/staff/update/${editingStaff.id}`, editingStaff);
+            await apiClient.put(`/api/attendance/staff/update/${editingStaff.id}`, editingStaff);
             alert("Staff Updated!");
             setEditingStaff(null);
             fetchStaff();

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient'; // FIXED: Swapped raw axios for centralized API client
 
 const FinanceDashboard = () => {
     const [file, setFile] = useState(null);
@@ -29,7 +29,8 @@ const FinanceDashboard = () => {
         formData.append('channel', channel);
 
         try {
-            const response = await axios.post('http://localhost:8080/api/finance/upload-settlement', formData, {
+            // FIXED: Used apiClient to dynamically route the request and pass auth tokens
+            const response = await apiClient.post('/api/finance/upload-settlement', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
@@ -46,30 +47,43 @@ const FinanceDashboard = () => {
     };
 
     return (
-        <div className="container-fluid p-4 bg-light" style={{ minHeight: '100vh' }}>
+        <div className="container-fluid p-3 p-md-4 bg-light" style={{ minHeight: '100vh' }}>
+            
+            {/* COMPONENT-SPECIFIC MOBILE RESPONSIVE ENGINE */}
+            <style>{`
+                @media (max-width: 767.98px) {
+                    .tverse-finance-card {
+                        padding: 1.25rem !important; /* Reduces bulky padding on small phone screens */
+                    }
+                    .form-select-lg, .form-control-lg {
+                        font-size: 1rem !important; /* Prevents iOS auto-zoom on input focus */
+                    }
+                }
+            `}</style>
+
             <div className="row justify-content-center">
-                <div className="col-md-8 col-lg-6">
+                <div className="col-12 col-md-8 col-lg-6">
                     
-                    <div className="card border-0 shadow-sm mt-4">
-                        <div className="card-header bg-white pt-4 pb-3 border-bottom">
-                            <h5 className="fw-bold mb-0 text-primary">
-                                <i className="bi bi-wallet2 me-2"></i>Marketplace Reconciliation
+                    <div className="card border-0 shadow-sm mt-2 mt-md-4 rounded-4 overflow-hidden">
+                        <div className="card-header bg-white pt-4 pb-3 border-bottom px-4">
+                            <h5 className="fw-bold mb-0 text-primary d-flex align-items-center" style={{ letterSpacing: '-0.5px' }}>
+                                <i className="bi bi-wallet2 me-2 fs-4"></i>Marketplace Reconciliation
                             </h5>
-                            <p className="text-muted small mb-0 mt-1">
+                            <p className="text-muted small mb-0 mt-2">
                                 Upload settlement reports to calculate true profit margins.
                             </p>
                         </div>
                         
-                        <div className="card-body p-4">
+                        <div className="card-body p-4 tverse-finance-card">
                             {/* Alert Messages */}
-                            {message && <div className="alert alert-success shadow-sm">{message}</div>}
-                            {error && <div className="alert alert-danger shadow-sm">{error}</div>}
+                            {message && <div className="alert alert-success shadow-sm small fw-medium">{message}</div>}
+                            {error && <div className="alert alert-danger shadow-sm small fw-medium">{error}</div>}
 
                             {/* Channel Dropdown */}
                             <div className="mb-4">
-                                <label className="form-label fw-bold text-dark">1. Select Marketplace</label>
+                                <label className="form-label fw-bold text-dark small text-uppercase">1. Select Marketplace</label>
                                 <select 
-                                    className="form-select form-select-lg bg-light" 
+                                    className="form-select form-select-lg bg-light fw-bold text-dark shadow-none border-secondary border-opacity-25" 
                                     value={channel} 
                                     onChange={(e) => setChannel(e.target.value)}
                                 >
@@ -80,23 +94,23 @@ const FinanceDashboard = () => {
                             </div>
 
                             {/* File Upload */}
-                            <div className="mb-4">
-                                <label className="form-label fw-bold text-dark">2. Upload Settlement CSV</label>
+                            <div className="mb-4 mt-2">
+                                <label className="form-label fw-bold text-dark small text-uppercase">2. Upload Settlement CSV</label>
                                 <input 
                                     type="file" 
                                     id="csvFileInput"
-                                    className="form-control form-control-lg" 
+                                    className="form-control form-control-lg shadow-none border-secondary border-opacity-25" 
                                     accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                                     onChange={handleFileChange}
                                 />
-                                <div className="form-text mt-2">
+                                <div className="form-text mt-2 small text-muted">
                                     Ensure the file matches the selected marketplace format.
                                 </div>
                             </div>
 
                             {/* Action Button */}
                             <button 
-                                className="btn btn-primary btn-lg w-100 fw-bold shadow-sm"
+                                className="btn btn-primary btn-lg w-100 fw-bold shadow-sm mt-2 rounded-3"
                                 onClick={handleUpload}
                                 disabled={loading || !file}
                             >

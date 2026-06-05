@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 import { useNavigate } from 'react-router-dom';
 
 const ReturnsInward = () => {
@@ -37,9 +37,9 @@ const ReturnsInward = () => {
         const loadConfigs = async () => {
             try {
                 const [s, c, cp] = await Promise.all([
-                    axios.get("http://localhost:8080/api/config/STAFF"),
-                    axios.get("http://localhost:8080/api/config/CHANNEL"),
-                    axios.get("http://localhost:8080/api/config/COURIER")
+                    apiClient.get("/api/config/STAFF"),
+                    apiClient.get("/api/config/CHANNEL"),
+                    apiClient.get("/api/config/COURIER")
                 ]);
                 setOptions({ staff: s.data, channel: c.data, courier: cp.data });
                 // Defaults
@@ -67,7 +67,7 @@ const ReturnsInward = () => {
             setManualSku("");
 
             try {
-                const res = await axios.get(`http://localhost:8080/api/orders/search?query=${trackingInput}`);
+                const res = await apiClient.get(`/api/orders/search?query=${trackingInput}`);
                 
                 if (res.data && res.data.length > 0) {
                     setFoundOrders(res.data);
@@ -122,7 +122,7 @@ const ReturnsInward = () => {
         };
 
         try {
-            await axios.post("http://localhost:8080/api/returns/inward", payload);
+            await apiClient.post("/api/returns/inward", payload);
             alert(`✅ Return Processed: ${isGood ? 'Restocked' : 'Scrapped'}`);
             // Reset for next item
             setActiveOrder(null);
@@ -146,7 +146,7 @@ const ReturnsInward = () => {
         "Damaged": ["Torn", "Stained", "Used Condition"]
     };
 
-    const getImageUrl = (path) => path?.startsWith('http') ? path : `http://localhost:8080/${path}`;
+    const getImageUrl = (path) => path?.startsWith('http') ? path : `${apiClient.defaults.baseURL}/${path}`;
 
     // --- RENDER ---
     return (

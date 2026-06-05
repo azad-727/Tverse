@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const ProductDetail = () => {
     const { id } = useParams(); 
@@ -22,7 +22,7 @@ const ProductDetail = () => {
 
     const loadData = () => {
         console.log("REACT IS TRYING TO FETCH URL ID:", id);
-        axios.get(`http://localhost:8080/api/catalog/detail/${id}`)
+        apiClient.get(`/api/catalog/detail/${id}`)
             .then(res => {
                 setProduct(res.data);
                 
@@ -78,7 +78,7 @@ const ProductDetail = () => {
         const newStatus = !product.isActive; // Toggle current status
         try {
             // Call API to patch status (You created this endpoint earlier)
-            await axios.patch(`http://localhost:8080/api/catalog/status/${product.productId}?isActive=${newStatus}`);
+            await apiClient.patch(`/api/catalog/status/${product.productId}?isActive=${newStatus}`);
             
             // Update local UI immediately
             setProduct({...product, isActive: newStatus}); 
@@ -94,7 +94,7 @@ const ProductDetail = () => {
             // Use product.productId because 'id' from URL might be a Variant ID depending on logic
             // But usually detail page URL uses Parent ID or Variant ID. 
             // Based on your Controller, updateProduct uses Parent ID.
-            await axios.put(`http://localhost:8080/api/catalog/update/${product.productId}`, formData);
+            await apiClient.put(`/api/catalog/update/${product.productId}`, formData);
             alert("✅ Product Updated Successfully!");
             window.location.reload(); 
         } catch (error) {
@@ -115,22 +115,38 @@ const ProductDetail = () => {
     const getImageUrl = (path) => {
         if (!path) return "https://via.placeholder.com/150";
         if (path.startsWith("http")) return path;
-        return `http://localhost:8080/${path}`;
+        // FIXED: Swapped hardcoded localhost to dynamically pull from apiClient configuration
+        return `${apiClient.defaults.baseURL || 'http://localhost:8080'}/${path}`;
     };
 
     if (loading) return <div className="p-5 text-center"><span className="spinner-border text-success"></span> Loading...</div>;
 
     return (
         <div className="container-fluid p-0">
+            
+            {/* MOBILE RESPONSIVE ENGINE */}
+            <style>{`
+                @media (max-width: 768px) {
+                    .table-responsive {
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .table-responsive::-webkit-scrollbar {
+                        display: none !important;
+                    }
+                }
+            `}</style>
+
             {/* --- HEADER --- */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            {/* ADDED: flex-column flex-md-row and gap-3 to handle stacking cleanly on mobile */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
                 <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate('/inventory')}>
                     <i className="bi bi-arrow-left"></i> Back to List
                 </button>
                 
-                <div className="d-flex gap-3 align-items-center">
+                <div className="d-flex flex-wrap gap-3 align-items-center w-100 w-md-auto justify-content-between justify-content-md-end">
                     {/* Status Toggle */}
-                    <div className="form-check form-switch">
+                    <div className="form-check form-switch mb-0">
                         <input 
                             className="form-check-input" 
                             type="checkbox" 
@@ -143,14 +159,16 @@ const ProductDetail = () => {
                         </label>
                     </div>
 
-                    <button className="btn btn-outline-danger btn-sm" onClick={handleDelete}>Delete</button>
-                    <button className="btn btn-success btn-sm" onClick={handleSave}>Save Changes</button>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-danger btn-sm" onClick={handleDelete}>Delete</button>
+                        <button className="btn btn-success btn-sm" onClick={handleSave}>Save Changes</button>
+                    </div>
                 </div>
             </div>
 
             <div className="row g-4">
                 {/* --- LEFT COL: IMAGE --- */}
-                <div className="col-md-4">
+                <div className="col-12 col-md-4">
                     <div className="card shadow-sm border-0 mb-4">
                         <div className="card-body text-center">
                             <img 
@@ -167,7 +185,7 @@ const ProductDetail = () => {
                 </div>
 
                 {/* --- RIGHT COL: EDIT TABS --- */}
-                <div className="col-md-8">
+                <div className="col-12 col-md-8">
                     <div className="card shadow-sm border-0">
                         <div className="card-header bg-white">
                             <ul className="nav nav-tabs card-header-tabs">
@@ -214,7 +232,8 @@ const ProductDetail = () => {
                             {/* TAB 2: VARIANTS */}
                             {activeTab === 'variants' && (
                                 <div className="table-responsive">
-                                    <table className="table table-hover align-middle">
+                                    {/* ADDED: minWidth boundary to enforce clean horizontal swipe scrolling on phones */}
+                                    <table className="table table-hover align-middle mb-0" style={{ minWidth: '700px' }}>
                                         <thead className="table-light">
                                             <tr>
                                                 <th>SKU</th>
@@ -267,7 +286,7 @@ const ProductDetail = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                    <button className="btn btn-outline-primary btn-sm mt-2">+ Add Variant</button>
+                                    <button className="btn btn-outline-primary btn-sm mt-3">+ Add Variant</button>
                                 </div>
                             )}
                         </div>

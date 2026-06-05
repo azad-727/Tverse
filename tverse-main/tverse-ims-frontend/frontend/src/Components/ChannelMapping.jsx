@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const ChannelMapping = () => {
     const [activeTab, setActiveTab] = useState('alias'); // 'alias' or 'bundle'
@@ -18,10 +18,10 @@ const ChannelMapping = () => {
     const fetchData = async () => {
         try {
             if (activeTab === 'alias') {
-                const res = await axios.get("http://localhost:8080/api/mapping/aliases");
+                const res = await apiClient.get("/api/mapping/aliases");
                 setAliases(res.data);
             } else {
-                const res = await axios.get("http://localhost:8080/api/mapping/bundles");
+                const res = await apiClient.get("/api/mapping/bundles");
                 setBundles(res.data);
             }
         } catch (e) { console.error(e); }
@@ -30,21 +30,21 @@ const ChannelMapping = () => {
     // --- HANDLERS ---
     const handleAddAlias = async () => {
         if (!newAlias.channelSku || !newAlias.masterSku) return alert("Fill all fields");
-        await axios.post("http://localhost:8080/api/mapping/alias/add", newAlias);
+        await apiClient.post("/api/mapping/alias/add", newAlias);
         setNewAlias({ ...newAlias, channelSku: "", masterSku: "" });
         fetchData();
     };
 
     const handleAddBundle = async () => {
         if (!newBundle.comboSku || !newBundle.componentSku) return alert("Fill all fields");
-        await axios.post("http://localhost:8080/api/mapping/bundle/add", newBundle);
+        await apiClient.post("/api/mapping/bundle/add", newBundle);
         setNewBundle({ ...newBundle, componentSku: "", quantity: 1 }); // Keep combo sku for easy multi-add
         fetchData();
     };
 
     const handleDelete = async (id, type) => {
         if(!confirm("Delete rule?")) return;
-        await axios.delete(`http://localhost:8080/api/mapping/${type}/delete/${id}`);
+        await apiClient.delete(`/api/mapping/${type}/delete/${id}`);
         fetchData();
     };
 
@@ -56,7 +56,7 @@ const ChannelMapping = () => {
         formData.append("type",activeTab);
 
         try{
-            await axios.post("http://localhost:8080/api/mapping/upload",formData,{
+            await apiClient.post("/api/mapping/upload",formData,{
                 headers:{"Content-Type":"multipart/form-data"}  
             });
             alert("Upload SuccessFully");

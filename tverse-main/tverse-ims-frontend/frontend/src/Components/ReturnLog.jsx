@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const ReturnLogs = () => {
     const [logs, setLogs] = useState([]);
@@ -18,7 +18,7 @@ const ReturnLogs = () => {
         try {
             const params = new URLSearchParams(filters);
             console.log(params);
-            const res = await axios.get(`http://localhost:8080/api/returns/logs?${params}`);
+            const res = await apiClient.get(`/api/returns/logs?${params}`);
             setLogs(res.data);
         } catch (err) { console.error(err); }
     };
@@ -32,9 +32,9 @@ const ReturnLogs = () => {
     const fetchOptions = async () => {
         try{
             const [staffRes,channelRes,courierRes]=await Promise.all([
-                axios.get("http://localhost:8080/api/config/STAFF"),
-                axios.get("http://localhost:8080/api/config/CHANNEL"),
-                axios.get("http://localhost:8080/api/config/COURIER")
+                apiClient.get("/api/config/STAFF"),
+                apiClient.get("/api/config/CHANNEL"),
+                apiClient.get("/api/config/COURIER")
             ]);
         setOptions({ staff:staffRes.data, channel:channelRes.data, courier:courierRes.data});
 

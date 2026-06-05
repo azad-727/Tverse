@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const PicklistPage = () => {
     const [file, setFile] = useState(null);
@@ -36,7 +36,7 @@ const PicklistPage = () => {
         setCurrentBatchId(null);
 
         try {
-            const response = await axios.post("http://localhost:8080/api/orders/generate-picklist", formData, {
+            const response = await apiClient.post("/api/orders/generate-picklist", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setPicklist(response.data);
@@ -62,7 +62,7 @@ const PicklistPage = () => {
         }
 
         try {
-            await axios.delete(`http://localhost:8080/api/orders/picklist/${currentBatchId}`);
+            await apiClient.delete(`/api/orders/picklist/${currentBatchId}`);
             alert("Orders deleted from history.");
             setPicklist([]); // Clear UI
             setCurrentBatchId(null);
@@ -75,7 +75,8 @@ const PicklistPage = () => {
     const getImageUrl = (path) => {
         if (!path) return null;
         if (path.startsWith("http")) return path;
-        return `http://localhost:8080/${path}`;
+        // FIXED: Corrected the default baseURL reference so images render properly
+        return `${apiClient.defaults.baseURL || 'http://localhost:8080'}/${path}`;
     };
 
     const formatVariant = (details) => {
@@ -110,24 +111,43 @@ const PicklistPage = () => {
     return (
         <div className="container-fluid p-0">
             
+            {/* MOBILE RESPONSIVE STYLE ENGINE */}
+            <style>{`
+                @media (max-width: 768px) {
+                    .table-responsive {
+                        -webkit-overflow-scrolling: touch;
+                        scrollbar-width: none;
+                    }
+                    .table-responsive::-webkit-scrollbar {
+                        display: none !important;
+                    }
+                    .img-fixed {
+                        max-width: 40px;
+                        max-height: 40px;
+                        object-fit: contain;
+                    }
+                }
+            `}</style>
+
             {/* Header */}
-            <div className="d-flex justify-content-between align-items-center mb-4 d-print-none">
+            {/* ADDED: flex-column flex-md-row and gap-3 for mobile stacking */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3 d-print-none">
                 <div>
                     <h3 className="fw-bold mb-0">Daily Picklist</h3>
                     <div className="text-muted small">Optimized walking path based on location.</div>
                 </div>
                 {picklist.length > 0 && (
-                    <div className="d-flex gap-2">
+                    <div className="d-flex flex-wrap gap-2 w-100 w-md-auto">
                         {/* Only show delete if we have a valid batch ID */}
                         {currentBatchId && (
-                            <button className="btn btn-outline-danger" onClick={handleDeleteBatch} title="Delete from History">
+                            <button className="btn btn-outline-danger flex-grow-1 flex-md-grow-0" onClick={handleDeleteBatch} title="Delete from History">
                                 <i className="bi bi-trash"></i>
                             </button>
                         )}
-                        <button className="btn btn-success" onClick={handleWhatsAppShare}>
+                        <button className="btn btn-success flex-grow-1 flex-md-grow-0" onClick={handleWhatsAppShare}>
                             <i className="bi bi-whatsapp me-2"></i> Share
                         </button>
-                        <button className="btn btn-dark px-4" onClick={() => window.print()}>
+                        <button className="btn btn-dark px-4 flex-grow-1 flex-md-grow-0" onClick={() => window.print()}>
                             <i className="bi bi-printer me-2"></i> Print
                         </button>
                     </div>
@@ -136,14 +156,14 @@ const PicklistPage = () => {
 
             {/* Upload Box */}
             {picklist.length === 0 && (
-                <div className="custom-card p-5 mb-4 d-print-none text-center">
-                    <div className="border rounded p-5 bg-light mx-auto" style={{maxWidth: '600px', borderStyle: 'dashed'}}>
+                <div className="custom-card p-3 p-md-5 mb-4 d-print-none text-center">
+                    <div className="border rounded p-3 p-md-5 bg-light mx-auto" style={{maxWidth: '600px', borderStyle: 'dashed'}}>
                         <i className="bi bi-file-earmark-spreadsheet fs-1 text-primary mb-3"></i>
                         <h5 className="fw-bold">Generate Picklist</h5>
                         
                         {/* 1. CHANNEL SELECTION */}
                         <div className="row mb-3 text-start">
-                            <div className="col-md-6">
+                            <div className="col-md-6 mb-3 mb-md-0">
                                 <label className="form-label small fw-bold text-muted">Sales Channel</label>
                                 <select className="form-select" value={channel} onChange={(e) => setChannel(e.target.value)}>
                                     <option value="Flipkart">Flipkart</option>
@@ -202,7 +222,8 @@ const PicklistPage = () => {
                     </div>
 
                     <div className="table-responsive mt-3">
-                        <table className="table table-bordered align-middle mb-0" style={{borderColor: '#dee2e6'}}>
+                        {/* ADDED: minWidth to prevent table squishing on mobile */}
+                        <table className="table table-bordered align-middle mb-0" style={{borderColor: '#dee2e6', minWidth: '850px'}}>
                             <thead className="table-dark">
                                 <tr className="text-uppercase small">
                                     <th style={{width: '15%'}} className="text-center">Loc</th>
