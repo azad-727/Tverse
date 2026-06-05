@@ -29,17 +29,13 @@ apiClient.interceptors.response.use(
     (error) => {
         const status = error.response ? error.response.status : null;
 
-        if (status === 401) {
-            console.warn("SECURITY WARNING: JWT Token expired or invalid. Flushing session contexts.");
-            
-            // Wipe local storage to prevent corrupted state loops
-            localStorage.removeItem('tverse_token');
-            localStorage.removeItem('tverse_role');
-            localStorage.removeItem('tverse_user');
-            
-            // Hard redirect to clear out old React virtual DOM memory trees and force re-authentication
-            window.location.href = '/login';
-        }
+     if (status === 401 || status === 403) {
+    console.warn("Access denied. Flushing session and redirecting to login.");
+    localStorage.removeItem('tverse_token');
+    localStorage.removeItem('tverse_role');
+    localStorage.removeItem('tverse_user');
+    window.location.href = '/login';
+}
         
         // Pass the error down to the local component try/catch block so the UI can render specific messages
         return Promise.reject(error);
