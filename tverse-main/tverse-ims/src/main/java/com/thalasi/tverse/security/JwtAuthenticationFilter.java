@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 String phoneNumber = jwtUtil.extractPhoneNumber(token);
                 String role = jwtUtil.extractRole(token);
-                new SimpleGrantedAuthority("ROLE_"+role);
+                new SimpleGrantedAuthority(role);
 
                 if (phoneNumber != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     if (jwtUtil.validateToken(token, phoneNumber)) {
