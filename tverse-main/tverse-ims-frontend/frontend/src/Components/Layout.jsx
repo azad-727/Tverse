@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-
+import logo from '../assets/wordmark-logo.png';
 const Layout = ({ children }) => {
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -22,7 +22,7 @@ const Layout = ({ children }) => {
                 {/* Logo Area */}
                 <div className="p-4 d-flex align-items-center justify-content-between">
                     <div className="d-flex align-items-center">
-                        <span><img src="/assets/wordmark-logo png.png" alt="logo" style={{width:"fit-content",height:60}}></img></span>
+                        <span><img src={logo} alt="logo" style={{width:"fit-content",height:60}}></img></span>
                     </div>
                     {/* Close Button (Mobile Only) */}
                     <button className="btn btn-sm d-md-none" onClick={() => setIsSidebarOpen(false)}>
