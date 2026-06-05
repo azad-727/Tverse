@@ -103,7 +103,7 @@ public class ManufacturingController {
         }
     }
 
-    @DeleteMapping("lot/delete/{id}")
+    @DeleteMapping("/lot/delete/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> deleteLot(@PathVariable Long id){
         try{
