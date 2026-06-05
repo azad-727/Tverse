@@ -14,15 +14,5 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:uploads/");
     }
 
-   @Override
-    public void addCorsMappings(CorsRegistry registry){
-        registry.addMapping("/**")
-                .allowedOrigins(
-                        "http://localhost:5173",
-                        "https://your-vercel-app-url.vercel.app" // REPLACE THIS with your actual Vercel URL
-                )
-                .allowedMethods("GET","PUT","POST","DELETE","OPTIONS","PATCH")
-                .allowedHeaders("*")
-                .allowCredentials(true); // Required if you are sending cookies or auth headers
-    }
+
 }
