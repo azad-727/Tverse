@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 
 const BulkStockOp = () => {
     const [file, setFile] = useState(null);
@@ -15,7 +15,7 @@ const BulkStockOp = () => {
         setMessage("");
 
         try {
-            const response = await axios.post("http://localhost:8080/api/inventory/bulk-adjust", formData, {
+            const response = await apiClient.post("/api/inventory/bulk-adjust", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setStatus("success");
@@ -27,7 +27,7 @@ const BulkStockOp = () => {
         }
     };
     const handleDownloadTemplate = ()=>{
-        const fileUrl="http://localhost:8080/BulkStock_UpdateFile.xlsx";
+        const fileUrl=`${apiClient.defaults.baseURL || 'http://localhost:8080'}/BulkStock_UpdateFile.xlsx`;
         const link=document.createElement('a');
         link.href=fileUrl;
         link.setAttribute('download','T-verse_BulkStock_Update');
@@ -37,10 +37,10 @@ const BulkStockOp = () => {
     }
     return (
         <div className="container p-0">
-            <h4 className="fw-bold mb-3 text-primary">Bulk Stock Operations</h4>
+            <h4 className="fw-bold mb-3 text-dark" style={{letterSpacing:'-0.5px'}}>Bulk Stock Operations</h4>
             
-            <div className="row">
-                <div className="col-md-8">
+            <div className="row g-4">
+                <div className="col-12 col-md-8">
                     <div className="custom-card p-4">
                         <div className="alert alert-warning border-0 d-flex align-items-center">
                             <i className="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
@@ -90,7 +90,7 @@ const BulkStockOp = () => {
                     </div>
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-12 col-md-4">
                     <div className="card bg-light border-0 p-3">
                         <h6 className="fw-bold">CSV/Excel Format</h6>
                         <p className="small text-muted">Ensure your file has these headers in order:</p>

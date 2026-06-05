@@ -18,7 +18,7 @@ import java.util.Optional;
 @Service
 public class AttendanceService {
     private static final LocalTime OFFICE_OPEN = LocalTime.of(8, 30);
-    private static final LocalTime PUNCH_IN_LIMIT = LocalTime.of(8, 45);
+    private static final LocalTime PUNCH_IN_LIMIT = LocalTime.of(9, 30);
     private static final LocalTime PUNCH_OUT_START = LocalTime.of(17, 30); // 5:30 PM
     private static final LocalTime PUNCH_OUT_END = LocalTime.of(17, 50);
 
@@ -84,8 +84,12 @@ public class AttendanceService {
             if(now.isBefore(OFFICE_OPEN)){
                 throw new RuntimeException("Wait! Office opens at 08:30 AM.");
             }
-            if(now.isAfter(PUNCH_IN_LIMIT)){
-                throw new RuntimeException("LOCKED:You are late (After 8:45). Contact Manager. ");
+            if(now.isAfter(PUNCH_IN_LIMIT)) {
+                String userRole = staff.getRole() != null ? staff.getRole().toUpperCase().trim() : "EMPLOYEE";
+                if (!"OWNER".equals(userRole) && !"ADMIN".equals(userRole) && !"SUPER_ADMIN".equals(userRole)){
+                    throw new RuntimeException("LOCKED:You are late (After 8:45). Contact Manager. ");
+            }
+                System.out.println("SECURITY BYPASS: Administrative user [" + staff.getFullName() + "] cleared late punch-in constraints.");
             }
             AttendanceLog newLog=new AttendanceLog();
             newLog.setStaff(staff);

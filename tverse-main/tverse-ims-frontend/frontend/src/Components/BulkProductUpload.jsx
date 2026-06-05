@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
-
+import apiClient from './apiClient';
 const BulkProductUpload = () => {
     const [file, setFile] = useState(null);
     const [status, setStatus] = useState("idle"); 
@@ -9,8 +8,7 @@ const BulkProductUpload = () => {
     // --- NEW: DOWNLOAD HANDLER ---
     const handleDownloadTemplate = () => {
         // This URL points directly to the file inside src/main/resources/static
-        const fileUrl = "http://localhost:8080/product_upload_template.xlsx";
-        
+        const fileUrl = `${apiClient.defaults.baseURL || 'http://localhost:8080'}/product_upload_template.xlsx`;
         // Create a temporary hidden link and click it to trigger download
         const link = document.createElement('a');
         link.href = fileUrl;
@@ -37,7 +35,7 @@ const BulkProductUpload = () => {
         setStatus("uploading");
 
         try {
-            const response = await axios.post("http://localhost:8080/api/catalog/upload", formData, {
+            const response = await apiClient.post("/api/catalog/upload", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             setStatus("success");

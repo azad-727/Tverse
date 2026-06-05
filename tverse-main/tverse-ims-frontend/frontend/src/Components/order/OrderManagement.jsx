@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 
 const OrderManagement = () => {
     // UI State
@@ -23,15 +23,13 @@ const OrderManagement = () => {
         'Completed':'SHIPPED',
         'On-Hold':'ON-HOLD'
     };
-    statusMap[activeTab];   
-    useEffect(() => {fetchCounts(); }, [activeTab]);
     const fetchCounts = async()=>{
         try{
 
-            const res=await axios.get(`http://localhost:8080/api/orders/flow/counts`);
+            const res=await apiClient.get(`/api/orders/flow/counts`);
             setStats(res.data); 
         }catch(e){
-                console.error("Error Fetching order count;",err);
+                console.error("Error Fetching order count;",e);
         }
     }
     
@@ -51,7 +49,7 @@ const OrderManagement = () => {
 
         try {
             // Call the Filter Endpoint we created earlier
-            const res = await axios.get(`http://localhost:8080/api/orders/flow/filter?${params.toString()}`);
+            const res = await apiClient.get(`/api/orders/flow/filter?${params.toString()}`);
             
             // Map Data (Reuse your mapping logic here)
             const mappedOrders = res.data.map(order => ({
@@ -61,7 +59,7 @@ const OrderManagement = () => {
                 channel:order.channel,
                 img: order.imageUrl
                     ? (order.imageUrl.startsWith('http') ? order.imageUrl :
-                'http://localhost:8080/${order.imageUrl}')
+                `${apiClient.defaults.baseURL || 'http://localhost:8080'}/${order.imageUrl}`)
                 : "http://via.placeholder.com/100",
                 
                 title:order.productName,
@@ -95,7 +93,7 @@ const OrderManagement = () => {
         const delayDebounceFn = setTimeout( async () => {
             if(searchTerm.trim()){
                 try{
-            const res=axios.get(`http://localhost:8080/api/orders/flow/search?query=${searchTerm}`);  
+            const res=apiClient.get(`/api/orders/flow/search?query=${searchTerm}`);  
             const mappedResults =(await res).data.map(order=>({
                 id: order.id,
                 orderId: order.orderId,
@@ -103,7 +101,7 @@ const OrderManagement = () => {
                 channel:order.channel,
                 img: order.imageUrl
                     ? (order.imageUrl.startsWith('http') ? order.imageUrl :
-                'http://localhost:8080/${order.imageUrl}')
+                `${apiClient.defaults.baseURL || 'http://localhost:8080' }/${order.imageUrl}`)
                 : "http://via.placeholder.com/100",
                 
                 title:order.productName,
@@ -138,7 +136,7 @@ const OrderManagement = () => {
             const dbStatus = statusMap[activeTab];
 
             // 1. Call Backend
-            const res=await axios.get(`http://localhost:8080/api/orders/flow/list?status=${dbStatus}`);
+            const res=await apiClient.get(`/api/orders/flow/list?status=${dbStatus}`);
 
             //2. Data Normalization (Convert DB Format -> UI Format)
             const formattedData=res.data.map(order => ({
@@ -148,7 +146,7 @@ const OrderManagement = () => {
                 channel:order.channel,
                 img: order.imageUrl
                     ? (order.imageUrl.startsWith('http') ? order.imageUrl :
-                'http://localhost:8080/${order.imageUrl}')
+                `${apiClient.defaults.baseUrl || 'http://localhost:8080'}/${order.imageUrl}`)
                 : "http://via.placeholder.com/100",
                 
                 title:order.productName,
@@ -169,7 +167,7 @@ const OrderManagement = () => {
 
             setOrders(formattedData);
         }catch(e){
-            console.error("Error Fetching orders;",err);
+            console.error("Error Fetching orders;",e);
         }
     };
 
@@ -179,7 +177,7 @@ const OrderManagement = () => {
             return;
         }
         try{
-                const res=await axios.post(`http://localhost:8080/api/orders/flow/${actionEndpoint}`,{
+                const res=await apiClient.post(`/api/orders/flow/${actionEndpoint}`,{
                 ids:selectedIds
             });
             alert("Success!");
@@ -187,7 +185,7 @@ const OrderManagement = () => {
             fetchOrders();
             fetchCounts();
             }catch(error){
-                console.err(error);
+                console.error(error);
                 alert("Action Failed: " + error.message);
 
             }
@@ -383,7 +381,7 @@ const OrderManagement = () => {
                     <p className="text-muted small mb-0">Manage shipments, labels, and dispatch processing.</p>
                 </div>
                 <div className="d-flex gap-2">
-                <button className="btn btn-light border shadow-sm"><i className="bi bi-cloud-download me-2"></i>Reports</button>
+                <button className="btn btn-light border shadow-sm" onClick={()=>window.location.href='/reports'}><i className="bi bi-cloud-download me-2"></i>Reports</button>
                 <button className="btn btn-success shadow-sm" onClick={()=>window.location.href='/orders/create'}><i className="bi bi-plus-lg me-2"></i>Create Manual Order</button>
                  <button  className="btn btn-dark shadow-sm" onClick={()=>window.location.href='/dispatch/scan'}>
                  <i className="bi bi-upc-scan me-2"></i> Scan & Pack

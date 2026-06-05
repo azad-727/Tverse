@@ -4,21 +4,26 @@ import com.thalasi.tverse.model.MasterOptions;
 import com.thalasi.tverse.repository.MasterOptionsRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/config")
+@CrossOrigin(origins = "*")
 public class ConfigController {
     @Autowired
     private MasterOptionsRepo repo;
 
+
     @GetMapping("/{category}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<List<MasterOptions>> getOptions(@PathVariable String category){
         return ResponseEntity.ok(repo.findByCategory(category));
     }
     @PostMapping("/add")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<?> addOption(@RequestBody MasterOptions option){
         try{
             option.setCategory(option.getCategory().toUpperCase());

@@ -9,6 +9,7 @@ import com.thalasi.tverse.service.ManufacturingService;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -31,6 +32,7 @@ public class ManufacturingController {
 
     // --- Fabric Controller
     @PostMapping("/fabric/add")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> addFabric(@RequestBody Fabric fabric ){
         try{
             fabric.setStatus("STORED");
@@ -42,18 +44,21 @@ public class ManufacturingController {
     }
 
     @GetMapping("/fabrics")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public List<Fabric> getAllFabrics(){
         return fabricRepo.findAll();
     }
 
     // --- Lot Controller
     @GetMapping("/lots")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public List<ProductionLot> getAllLots(){
         return productionLotRepo.findAll();
     }
 
     // --- Create Lot
     @PostMapping("/lot/create")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> createLot(@RequestBody CreateLotRequest request) {
         try {
             ProductionLot lot = new ProductionLot();
@@ -84,6 +89,7 @@ public class ManufacturingController {
     }
 
     @PostMapping("/lot/status")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<?> updateStatus(@RequestBody UpdateStatusRequest request) {
         try {
             return ResponseEntity.ok(
@@ -99,6 +105,7 @@ public class ManufacturingController {
     }
 
     @DeleteMapping("lot/delete/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> deleteLot(@PathVariable Long id){
         try{
             service.deleteLot(id); // Use Service method
@@ -109,6 +116,7 @@ public class ManufacturingController {
     }
 
     @GetMapping("/lot/filter")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public List<ProductionLot> filterLots(
             @RequestParam(required=false) String status,
             @RequestParam(required=false) String startDateFrom,
@@ -127,6 +135,7 @@ public class ManufacturingController {
     }
 
     @PostMapping("/lot/cancel/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> cancelLot(@PathVariable Long id){
         try {
             service.cancelLot(id);
