@@ -64,6 +64,9 @@ public class StockoutPredictorService {
             // 3. Calculate Days of Inventory (DOI)
             int daysOfInventory = (int) Math.round(currentStock / dailyVelocity);
 
+            if (daysOfInventory > 365) {
+                daysOfInventory = 365; // Caps output visualization cleanly at 1 year max
+            }
             // 4. Evaluate Reorder Alerts (Assuming 20-day supplier lead time)
             String alertStatus;
             if (daysOfInventory <= 15) {

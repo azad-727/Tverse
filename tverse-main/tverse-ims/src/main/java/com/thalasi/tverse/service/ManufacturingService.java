@@ -67,12 +67,30 @@ public class ManufacturingService {
         if("COMPLETED".equals(lot.getStatus())) throw new RuntimeException("Cannot cancel completed lot");
 
         lot.setStatus("CANCELLED");
-        // Optional: Logic to return unused fabric could go here
+
+        if (lot.getFabric() != null) {
+            Fabric fabric = lot.getFabric();
+            fabric.setRemainingKgs(fabric.getRemainingKgs() + lot.getFabricUsedKgs());
+            fabricRepo.save(fabric);
+            System.out.println("MATERIAL RECONCILIATION SUCCESSFUL: Reverted " + lot.getFabricUsedKgs() + " Kgs back to roll " + fabric.getId());
+        }
+
         lotRepo.save(lot);
     }
 
     @Transactional
     public void deleteLot(Long lotId) {
-        lotRepo.deleteById(lotId);
+
+        ProductionLot lot = lotRepo.findById(lotId).orElse(null);
+        if (lot == null) return;
+
+        // If an uncompleted lot is physically deleted from records, automatically release its fabric allocation weight first
+        if (!"CANCELLED".equalsIgnoreCase(lot.getStatus()) && !"COMPLETED".equalsIgnoreCase(lot.getStatus()) && lot.getFabric() != null) {
+            Fabric fabric = lot.getFabric();
+            fabric.setRemainingKgs(fabric.getRemainingKgs() + lot.getFabricUsedKgs());
+            fabricRepo.save(fabric);
+        }
+
+        lotRepo.delete(lot);
     }
 }

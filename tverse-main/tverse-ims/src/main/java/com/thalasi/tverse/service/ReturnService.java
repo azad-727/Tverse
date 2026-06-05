@@ -9,11 +9,13 @@ import com.thalasi.tverse.repository.SalesReturnRepo;
 import com.thalasi.tverse.repository.ProductVariantRepo;
 import com.thalasi.tverse.model.productVariant;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @Service
 public class ReturnService {
@@ -22,13 +24,16 @@ public class ReturnService {
     @Autowired private SalesReturnRepo returnRepo;
     @Autowired private InventoryService inventoryService; // Reuse existing inventory logic
     @Autowired private ProductVariantRepo variantRepo;
+    @Autowired private MappingService mappingService;
 
     @Transactional
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public void processReturn(ReturnProcessDTO request) {
 
         String skuToRestock = request.getSku();
         int qtyToRestock = request.getQuantity();
         String orderIdRef = "EXTERNAL_NA";
+
         // 1. VALIDATION: Check duplicates
         if (returnRepo.existsByTrackingId(request.getTrackingId())) {
             throw new RuntimeException("This return (Tracking ID) has already been processed.");
@@ -105,17 +110,28 @@ public class ReturnService {
 
         // 5. INVENTORY UPDATE
         if (shouldRestock) {
-            // We need the Variant ID to call InventoryService
-            Optional<productVariant> variant = variantRepo.findBySku(skuToRestock);
-            if (variant.isPresent()) {
-                StockAdjustmentDTO adj = new StockAdjustmentDTO();
-                adj.setVariantId(variant.get().getId());
-                adj.setQuantity(qtyToRestock);
-                adj.setOperation("ADD"); // Add back to stock
-                adj.setReason("Return Inward: " + returnRecord.getReturnType());
-                adj.setPerformedBy(request.getStaffName());
+            // Resolve the incoming SKU down to its true internal master SKUs and quantities (handles singles and bundles)
+            Map<String, Integer> resolvedComponents = mappingService.resolveSku(skuToRestock, qtyToRestock);
 
-                inventoryService.adjustStock(adj);
+            // Loop through every single resolved component piece to restock them individually
+            for (Map.Entry<String, Integer> entry : resolvedComponents.entrySet()) {
+                String masterSku = entry.getKey();
+                int exactReturnQty = entry.getValue(); // Respects bundle multipliers! (e.g., 2 units * 2 packs = 4 tees)
+
+                Optional<productVariant> variant = variantRepo.findBySku(masterSku);
+                if (variant.isPresent()) {
+                    StockAdjustmentDTO adj = new StockAdjustmentDTO();
+                    adj.setVariantId(variant.get().getId());
+                    adj.setQuantity(exactReturnQty);
+                    adj.setOperation("ADD"); // Add back to stock available on shelves
+                    adj.setReason("Return Inward [" + returnRecord.getReturnType() + "]: Resolved from channel alias " + skuToRestock);
+                    adj.setPerformedBy(request.getStaffName());
+
+                    // Fire the adjustment to your existing inventory service layer
+                    inventoryService.adjustStock(adj);
+                } else {
+                    System.out.println("CRITICAL CORRUPTION ALERT: Resolved Master SKU [" + masterSku + "] missing from Catalog tables!");
+                }
             }
         }
 

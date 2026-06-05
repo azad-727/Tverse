@@ -150,7 +150,7 @@ public class OrderFlowService {
             v.setStockCommitted(v.getStockCommitted()-qty);
         }
         else if(action.equals("RELEASE")){// Cancel
-            v.setStockCommitted(v.getStockCommitted()-1);
+            v.setStockCommitted(v.getStockCommitted() - qty);
         }
         variantRepo.save(v);
     }

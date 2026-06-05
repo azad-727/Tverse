@@ -8,6 +8,7 @@ import com.thalasi.tverse.service.DispatchService;
 import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -17,7 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/dispatch")
-@CrossOrigin(origins = "")
+@CrossOrigin(origins = "*")
 public class DispatchController {
 
     @Autowired
@@ -25,7 +26,9 @@ public class DispatchController {
     @Autowired
     private DailyDispatchRepo repo;
 
+
     @PostMapping("/scan")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<?> scanOrder(@RequestBody DailyDispatchDTO request){
         try{
             List<SalesOrder> scannedOrder=dispatchService.processScan(request);
@@ -36,6 +39,7 @@ public class DispatchController {
         }
     }
     @GetMapping("/logs")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<List<DailyDispatch>> getDispatchLogs(
             @RequestParam(required = false) String fromDate,
             @RequestParam(required = false) String toDate,

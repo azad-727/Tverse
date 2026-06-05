@@ -10,6 +10,7 @@ import com.thalasi.tverse.repository.*;
 import com.thalasi.tverse.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,8 +43,12 @@ public class CatalogController {
     @Autowired private LiquidationService liquidationService;
     @Autowired private DashboardSnapshotRepository snapshotRepository;
     @Autowired private StockoutPredictorService stockoutService;
+
+
     // --- 1. EXISTING ENDPOINTS ---
+
     @PostMapping("/add")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> addSingleProduct(@RequestBody productRequestDTO request) {
         try {
             catalogService.addNewProduct(request);
@@ -54,6 +59,7 @@ public class CatalogController {
     }
 
     @PostMapping("/analytics/trigger-abc")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> manualAbcTrigger() {
         try {
             abcService.executeNightlyAbcAnalysis(); // Force-run the computation loop
@@ -63,7 +69,9 @@ public class CatalogController {
             return ResponseEntity.internalServerError().body("Trigger Failed: " + e.getMessage());
         }
     }
+
     @GetMapping("/analytics/abc")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> getLatestAbcAnalysis(@RequestParam(defaultValue = "CHILD") String viewType) {
         try {
             // Dynamically choose which metric to pull based on the frontend toggle
@@ -75,7 +83,9 @@ public class CatalogController {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
         }
     }
+
     @GetMapping("/analytics/liquidation")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> getLiquidationAnalysis(
             @RequestParam(defaultValue = "90") int days,
             @RequestParam(defaultValue = "ALL") String category) {
@@ -89,6 +99,7 @@ public class CatalogController {
     }
 
     @GetMapping("/analytics/stockout")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> getLatestStockoutPredictions() {
         try {
             // Smart fetch for the stockout engine too
@@ -98,7 +109,10 @@ public class CatalogController {
             return ResponseEntity.internalServerError().body("Failed to load analytics: " + e.getMessage());
         }
     }
+
+
     @GetMapping("/analytics/sales-overview")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> getSalesOverview(
             @RequestParam(defaultValue = "7") int days,
             @RequestParam(defaultValue = "ALL") String channel) { // NEW: Listen for the channel!
@@ -112,6 +126,7 @@ public class CatalogController {
     }
 
     @PostMapping("/analytics/trigger-stockout")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> manualStockoutTrigger() {
         try {
             stockoutService.executeNightlyStockoutPrediction();
@@ -121,7 +136,9 @@ public class CatalogController {
         }
     }
 
+
     @PostMapping("/upload")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> uploadBulkProducts(@RequestParam("file") MultipartFile file) {
         try {
             excelService.processBulkUpload(file);
@@ -133,12 +150,14 @@ public class CatalogController {
 
     // --- 2. NEW: GET DYNAMIC CATEGORIES ---
     @GetMapping("/categories")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<List<category>> getAllCategories() {
         return ResponseEntity.ok(categoryRepo.findAll());
     }
 
     // --- 3. NEW: IMAGE UPLOAD ENDPOINT ---
     @PostMapping("/upload-image")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<String> uploadImage(@RequestParam("file") MultipartFile file) {
         try {
             // 1. Define where to save (Project folder/uploads)
@@ -163,7 +182,9 @@ public class CatalogController {
             return ResponseEntity.internalServerError().body("Image Upload Failed");
         }
     }
+
     @PostMapping("/category/add")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<?> addCategory(@RequestBody Map<String, String> payload) {
         String name = payload.get("name");
         if (name == null || name.trim().isEmpty()) {
@@ -181,6 +202,7 @@ public class CatalogController {
         return ResponseEntity.ok(saved);
     }
     @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<List<ProductListingDTO>> getAllListings() {
         List<productVariant> variants = variantRepo.findAllWithFullProduct();
 
@@ -211,6 +233,7 @@ public class CatalogController {
 
     // --- 6. QUICK EDIT (Stock & Price) ---
     @PutMapping("/quick-update")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> quickUpdate(@RequestBody Map<String, Object> payload) {
         try {
             Long id = Long.valueOf(payload.get("variantId").toString());
@@ -232,6 +255,7 @@ public class CatalogController {
 
     // --- 7. DELETE PRODUCT VARIANT ---
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     @Transactional
     public ResponseEntity<String> deleteVariant(@PathVariable Long id) {
         try {
@@ -264,6 +288,7 @@ public class CatalogController {
         }
     }// --- 9. SEARCH SINGLE VARIANT BY SKU ---
     @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<?> getVariantBySku(@RequestParam String sku) {
         Optional<productVariant> opt = variantRepo.findBySku(sku);
         if (opt.isPresent()) {
@@ -285,6 +310,7 @@ public class CatalogController {
     }
 
     @GetMapping("/detail/{sku}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<?> getProductDetail(@PathVariable String sku) {
         try {
             // 1. Find the variant (Ensure variantRepo.findBySkuWithProduct uses JOIN FETCH to avoid N+1)
@@ -338,6 +364,7 @@ public class CatalogController {
 
     // Update Product Details
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> updateProduct(@PathVariable Long id, @RequestBody productRequestDTO request) {
         try {
             catalogService.updateProduct(id, request);
@@ -350,6 +377,7 @@ public class CatalogController {
 
     // Disable/Enable Product
     @PatchMapping("/status/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
     public ResponseEntity<String> toggleStatus(@PathVariable Long id, @RequestParam boolean isActive) {
         try {
             catalogService.toggleProductStatus(id, isActive);
