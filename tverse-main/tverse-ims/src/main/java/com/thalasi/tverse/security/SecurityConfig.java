@@ -100,7 +100,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:3000",
-                "https://tverse-plum.vercel.app" // Add your Vercel URL here! (No trailing slash)
+                "https://*.vercel.app" // Add your Vercel URL here! (No trailing slash)
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
