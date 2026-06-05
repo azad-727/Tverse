@@ -15,7 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/returns")
-@CrossOrigin(origins = "*")
 public class ReturnController {
 
     @Autowired

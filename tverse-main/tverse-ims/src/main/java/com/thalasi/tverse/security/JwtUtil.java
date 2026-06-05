@@ -24,7 +24,7 @@ import java.util.Date;
     public String generateToken(String phoneNumber, String role) {
         return Jwts.builder()
                 .subject(phoneNumber)
-                .claim("role", "ROLE_" + role.toUpperCase()) // Appends standard Spring prefix
+                .claim("role", role.toUpperCase()) // Appends standard Spring prefix
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME_MS))
                 .signWith(getSigningKey())

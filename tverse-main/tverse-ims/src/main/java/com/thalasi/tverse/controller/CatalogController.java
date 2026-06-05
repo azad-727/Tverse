@@ -29,7 +29,6 @@ import java.nio.file.StandardCopyOption;
 
 @RestController
 @RequestMapping("/api/catalog")
-@CrossOrigin(origins = "*")
 public class CatalogController {
     @Autowired private SalesDashboardService dashboardService;
     @Autowired private catalogService catalogService;

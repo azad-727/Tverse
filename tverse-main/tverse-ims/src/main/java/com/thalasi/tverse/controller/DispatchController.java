@@ -18,7 +18,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/dispatch")
-@CrossOrigin(origins = "*")
 public class DispatchController {
 
     @Autowired

@@ -21,7 +21,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/manufacturing")
-@CrossOrigin(origins="*")
 public class ManufacturingController {
     @Autowired
     private ProductionLotRepo productionLotRepo;

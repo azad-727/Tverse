@@ -8,7 +8,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/finance")
-@CrossOrigin(origins = "*")
 public class FinanceController {
 
     @Autowired
