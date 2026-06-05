@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 import Webcam from 'react-webcam'; // Ensure npm install react-webcam
 
 const AttendanceKiosk = () => {
@@ -26,7 +26,7 @@ const AttendanceKiosk = () => {
 
     const fetchDashboard = async () => {
         try {
-            const res = await axios.get("http://localhost:8080/api/attendance/today");
+            const res = await apiClient.get("/api/attendance/today");
             setStaffList(res.data);
             setLoading(false);
         } catch (error) { console.error(error); }
@@ -51,7 +51,7 @@ const AttendanceKiosk = () => {
         try {
             // Update this URL to match your backend Logic
             // Sending PIN and Photo in body
-            const res = await axios.post(`http://localhost:8080/api/attendance/punch/${selectedStaff.staffId}`, {
+            const res = await apiClient.post(`/api/attendance/punch/${selectedStaff.staffId}`, {
                 pin: pin,
                 photo: imageSrc
             });
@@ -70,7 +70,7 @@ const AttendanceKiosk = () => {
         if (!newStaff.fullName || !newStaff.phoneNumber) return alert("Fill all fields");
         try {
             // Auto-set default PIN for now
-            await axios.post("http://localhost:8080/api/attendance/staff/add", { ...newStaff});
+            await apiClient.post("/api/attendance/staff/add", { ...newStaff});
             alert("Staff Added! Default PIN is 1234");
             setShowAdd(false);
             setNewStaff({ fullName: "", role: "Packer", phoneNumber: "" });

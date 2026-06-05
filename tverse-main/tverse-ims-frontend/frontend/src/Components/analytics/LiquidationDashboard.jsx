@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 
 const LiquidationDashboard = () => {
     // 1. Data States
@@ -17,7 +17,7 @@ const LiquidationDashboard = () => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await axios.get('http://localhost:8080/api/catalog/categories');
+                const res = await apiClient.get('/api/catalog/categories');
                 setAvailableCategories(res.data);
             } catch (error) {
                 console.error("Failed to load categories from database", error);
@@ -34,7 +34,7 @@ const LiquidationDashboard = () => {
     const fetchLifecycleData = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`http://localhost:8080/api/catalog/analytics/liquidation?days=${dateFilter}&category=${categoryFilter}`);
+            const res = await apiClient.get(`/api/catalog/analytics/liquidation?days=${dateFilter}&category=${categoryFilter}`);
             
             const fetchedData = res.data;
             setData(fetchedData);

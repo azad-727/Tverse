@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const ScanPack = () => {
     // --- STATE ---
@@ -39,9 +39,9 @@ const ScanPack = () => {
             
             // FIXED: Appended authConfig as the second argument to pass the token
             const [staffRes, channelRes, courierRes] = await Promise.all([
-                axios.get("http://localhost:8080/api/config/STAFF", authConfig),
-                axios.get("http://localhost:8080/api/config/CHANNEL", authConfig),
-                axios.get("http://localhost:8080/api/config/COURIER", authConfig)
+                apiClient.get("/api/config/STAFF", authConfig),
+                apiClient.get("/api/config/CHANNEL", authConfig),
+                apiClient.get("/api/config/COURIER", authConfig)
             ]);
 
             setOptions({ staff: staffRes.data, channel: channelRes.data, courier: courierRes.data });
@@ -67,7 +67,7 @@ const ScanPack = () => {
             };
             
             // FIXED: Appended authConfig as the third argument for the POST request
-            const res = await axios.post("http://localhost:8080/api/config/add", { category, value: newValue }, authConfig);
+            const res = await apiClient.post("/api/config/add", { category, value: newValue }, authConfig);
             setOptions(prev => ({ ...prev, [keyInState]: [...prev[keyInState], res.data] }));
             const sessionKey = category === 'STAFF' ? 'staffName' : category === 'CHANNEL' ? 'channel' : 'courierPartner';
             setSession(prev => ({...prev, [sessionKey]: newValue}));
@@ -119,7 +119,7 @@ const ScanPack = () => {
             };
             
             // FIXED: Appended authConfig as the third argument to pass the token down to dispatch/scan
-            const res = await axios.post("http://localhost:8080/api/dispatch/scan", payload, authConfig);
+            const res = await apiClient.post("/api/dispatch/scan", payload, authConfig);
             
             // 1. Success State
             setScanStatus("SUCCESS");

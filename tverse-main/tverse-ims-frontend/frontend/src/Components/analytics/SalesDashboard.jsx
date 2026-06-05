@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../apiClient';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 const SalesDashboard = () => {
@@ -40,7 +40,7 @@ const SalesDashboard = () => {
         setLoading(true);
         const days = getDaysFromFilter(date);
         try {
-            const res = await axios.get(`http://localhost:8080/api/catalog/analytics/sales-overview?days=${days}&channel=${channel}`);
+            const res = await apiClient.get(`/api/catalog/analytics/sales-overview?days=${days}&channel=${channel}`);
             setKpiData(res.data);
             setChartData(res.data.dailyTrends || []);
             setProductData(res.data.topProducts || []);
