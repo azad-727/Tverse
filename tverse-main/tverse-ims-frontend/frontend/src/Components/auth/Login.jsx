@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import apiClient from '../apiClient';
-import tverseLogo from '../../assets/wordmark-logo png.png'; 
+import tverseLogo from '../../assets/wordmark-logo.png'; 
 import loginVideo from '../../assets/login-video.mp4'; 
 
 const Login = ({ onLoginSuccess }) => {
