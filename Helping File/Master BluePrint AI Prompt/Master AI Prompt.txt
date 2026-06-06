@@ -1,0 +1,354 @@
+# T-VERSE ENTERPRISE SYSTEM ARCHITECTURE MANUAL & MASTER SPECIFICATION
+
+**Document Reference:** `tverse-master-blueprint.md`
+
+**Target Audience:** Engineering Teams / SDE Technical Interview Preparation
+
+**System Classification:** Production-Grade Warehouse Management (WMS) & Multi-Channel ERP
+
+---
+
+## SECTION 1: GLOBAL TECH STACK & ARCHITECTURAL FOUNDATIONS
+
+### 1.1 Core Backend Stack
+
+* **Language Runtime:** Java 25 (utilizing modern language enhancements, advanced patterns, and optimized garbage collection parameters).
+* **Framework Matrix:** Spring Boot 3.4.x, Spring Data JPA, Hibernate ORM Core.
+* **Database Engine:** MySQL Server (Stateless, relational clustering deployment model).
+* **Scheduling Layer:** Spring Task Execution Thread Pools configured for asynchronous background processing via `@Scheduled` CRON expressions.
+* **Data Integration:** Apache POI Framework (high-performance XML Spreadsheet processing for bulk inbound operations).
+
+### 1.2 Core Frontend Stack
+
+* **UI Engine:** React.js mapped via Vite Build Pipeline.
+* **Network Client:** Axios Network Layer configured with central HTTP request/action interceptors.
+* **UI Styling:** Bootstrap 5 overlaid with custom atomic layouts, grid configurations, responsive glassmorphism styles, and high-visibility status terminal panels.
+
+### 1.3 System Component Decoupling Guardrail
+
+To ensure standard transactional throughput on the core web server never degrades under heavy compute cycles, resource-intensive background processing modules—such as the algorithmic computer vision **Fabric Cutting Marker Generator microservice**—are completely decoupled from the primary Spring Boot application. They run as separate, isolated microservices communicating over lightweight async network protocols, preserving core database transaction thread availability.
+
+---
+
+## SECTION 2: DEFENSE-IN-DEPTH SECURITY & PRIVILEGE MATRIX
+
+The T-verse security infrastructure follows a multi-tier, stateless validation model. Every incoming request must clear both a global token filter chain and individual method-level annotation walls.
+
+### 2.1 Frontend Interceptor & Token Management Lifecycle (`App.jsx`)
+
+* **Session Persistence:** Successful authentication commits three key values to the browser’s `localStorage` dictionary: `tverse_token` (JWT String), `tverse_role` (Role String), and `tverse_user` (Metadata String).
+* **Outbound Request Interceptor:** Injects bearer authorization headers into every outgoing network request before it leaves the browser window:
+```javascript
+config.headers['Authorization'] = `Bearer ${localStorage.getItem('tverse_token')}`;
+
+```
+
+
+* **Inbound Response Interceptor:** Listens for incoming HTTP status errors from the network. If an HTTP `401 Unauthorized` token status clears the filter, the frontend triggers an immediate `localStorage.clear()` session flush and drops the view state back to the secure root login screen.
+
+### 2.2 Global Authorization Filter Chain (`SecurityConfig.java`)
+
+Configured via an authenticated bouncer filter chain using stateless `SessionCreationPolicy.STATELESS` policies. To prevent CORS Preflight handshake failures during concurrent asynchronous operations (e.g., React `Promise.all()` mounting blocks), the allowed headers parameter is opened via wildcards, while origin ports are securely pinned:
+
+```java
+config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+config.setAllowedHeaders(List.of("*")); // Crucial for multi-promise browser OPTIONS handshakes
+config.setExposedHeaders(List.of("Content-Disposition"));
+config.setAllowCredentials(true);
+
+```
+
+### 2.3 Central Path Matcher & RBAC Matrix Rules
+
+| Target URI Resource Path Pattern | Logic / Parameter Constraints Evaluated | Role Clearance Enforcement Matrix |
+| --- | --- | --- |
+| `/api/auth/**` | Public Login & Sign-On Gates | `permitAll()` |
+| `/v3/api-docs/**`, `/swagger-ui/**` | API Specification UI | `permitAll()` |
+| `/product_upload_template.xlsx` | Bulk Formatting Spreadsheet Sheets | `permitAll()` |
+| `/**/*.xlsx`, `/**/*.csv`, `/**/*.png` | Common Static Static File Extensions | `permitAll()` |
+| `/api/staff/**`, `/api/attendance/staff/add` | Personnel Account Modifications | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")` |
+| `/api/catalog/analytics/**` | Revenue Summaries, ABC Runs, Liquidations | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")` |
+| `/api/orders/generate-picklist`, `/api/orders/flow/**` (Mutations) | Picklist Compilation, Label Triggers, Cancellations | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")` |
+| `/api/dispatch/logs` | WMS Warehouse Shipping Ledger Audits | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")` |
+| `/api/config/**` | Dropdown Select Dropdowns Metadata Lists | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")` |
+| `/api/orders/flow/list`, `/api/orders/flow/counts` | Order Pipeline State Counters | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")` |
+| `/api/dispatch/scan` | Live Barcode Scanning Terminals | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")` |
+| Custom Lambda Predicates: `/api/reports/download` | `?type=ABC_CLASSIFICATION` | `DEAD_STOCK` | `ATTENDANCE_LOG` | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")` |
+| Custom Lambda Predicates: `/api/reports/download` | `?type=ALL_STOCK` | `CATALOG_TEMPLATE` | `hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")` |
+
+---
+
+## SECTION 3: SYSTEM DATA DICTIONARY & COMPREHENSIVE SCHEMAS
+
+### 3.1 Product Catalog Architecture Schema
+
+* **`category` (Product Department Entity):** `Long id` (PK), `String name` (Unique, indexed).
+* **`brand` (Brand Registry Entity):** `Long id` (PK), `String name`.
+* **`product` (Parent Design Master Entity):** `Long id` (PK), `String name`, `String description`, `String hsnCode`, `Double taxRate`, `String imageUrl`, `String material`, `boolean isActive`.
+* **`productVariant` (Child SKU Stock Keeping Unit Entity):** * Fields: `Long id` (PK), `String sku` (Unique Index), `BigDecimal procurementCost`, `BigDecimal regularPrice`, `BigDecimal salePrice`, `int stockOnHand`, `int stockCommitted`, `String warehouseLocation`, `String size`, `String color`, `String variantImageUrl`, `int supplierLeadTime`.
+* Relationships: Many-To-One linked to parent `product`.
+
+
+* **`inventoryLog` (Audit Compliance System Ledger):** `Long id` (PK), `String changeType` (`INITIAL_STOCK`, `COST_UPDATE`), `int quantityChanged`, `int newStockOnHand`, `String reason`, `String performedBy`, `productVariant variant` (FK).
+
+### 3.2 Sales Order & Logistics Fulfillment Schema
+
+* **`SalesOrder` (Central Transaction Logging Hub):**
+* Core Variables: `Long id` (PK), `String uniqueReferenceId` (Unique composite business constraint index column), `String channel` (`AMAZON`, `FLIPKART`, `MEESHO`, `WhatsApp`), `String orderId`, `String orderItemId`, `String shipmentId`, `String warehouseCode`.
+* Product Fields: `String sku`, `String productName`, `String fsn`, `String asin`, `int quantity`, `BigDecimal sellingPrice`, `BigDecimal itemCost`, `BigDecimal productPayment`, `String imageUrl`.
+* Shipping Metrics: `String trackingId`, `String orderStatus`, `LocalDateTime orderDate`, `String manifestId`, `LocalDateTime dispatchByDate`, `String courierPartner`, `String picklistId`.
+* Margin Metrics: `BigDecimal actualPayout`, `BigDecimal adSpend`, `BigDecimal trueProfit`.
+* Customer Fields: `String customerName`, `String customerCity`, `String customerState`, `String pincode`.
+
+
+* **`SalesOrderItem` (Multi-Line Order Item Map):** `Long id` (PK), `String sku`, `int quantity`, `Double unitPrice`, `SalesOrder salesOrder` (FK).
+
+### 3.3 Dynamic Sku Mapping & Product Bundle Schema
+
+* **`SkuMapping` (Marketplace Channel Alias Dictionary):** `Long id` (PK), `String channel`, `String channelSku` (Marketplace Naming Variation), `String masterSku` (True Internal Warehouse Catalog Sku).
+* **`ProductBundle` (Virtual Combo Kits Deconstruction Specification):** `Long id` (PK), `String comboSku` (Virtual Listing Item Name), `String componentSku` (Physical Variant Raw Sku Component), `int qty` (Component Quantity Ratio Per Combo).
+
+### 3.4 Intelligence Metrics & Analytics Schema
+
+* **`DailyDashboardSnapshot` (Asynchronous BI Cache Table):** `Long id` (PK), `LocalDate snapshotDate`, `String metricType` (`ABC_ANALYSIS`, `PARENT_ABC_ANALYSIS`, `STOCKOUT_PREDICTOR`), `String metricKey` (Target Sku / Parent Design Code), `String metricValue` (Compressed Flattened JSON String).
+
+### 3.5 Workforce & Attendance Ledger Schema
+
+* **`Staff` (Personnel Master Registry):** `Long id` (PK), `String fullName`, `String securityPin` (Plain-text matched), `String role` (`OWNER`, `ADMIN`, `SUPER_ADMIN`, `EMPLOYEE`), `DayOfWeek weeklyOffDay`, `boolean isActive`.
+* **`AttendanceLog` (Biometric Validation Audit Ledger):** `Long id` (PK), `LocalDate date`, `LocalDateTime checkInTime`, `LocalDateTime checkOutTime`, `String status` (`WORKING`, `COMPLETED`), `String shiftType` (`REGULAR`, `SUNDAY_OT`), `String punchPhotoUrl`, `double workedHours`, `boolean isLate`, `Staff staff` (FK).
+
+### 3.6 Factory Floor Manufacturing & Material Schema
+
+* **`Fabric` (Raw Material Roll Stock Ledger):** `Long id` (PK), `String fabricName`, `String color`, `int gsm`, `double totalKgs`, `double remainingKgs`, `String status` (`STORED`, `DEPLETED`).
+* **`ProductionLot` (Garment Construction Production Run Master):** `Long id` (PK), `String lotNumber` (Unique runtime format), `String skuCode`, `double fabricUsedKgs`, `String status` (`NEW`, `CUTTING`, `STITCHING`, `COMPLETED`, `CANCELLED`), `LocalDateTime startDate`, `LocalDateTime expectedDate`, `LocalDateTime completedDate`, `String remarks`, `Fabric fabric` (FK).
+* **`LotItem` (Sizing Breakdown Yield Allocation Row):** `Long id` (PK), `String size`, `int plannedQty`, `int rejectedQty`, `int produceQty`, `ProductionLot productionLot` (FK).
+
+---
+
+## SECTION 4: INTERACTIVE API BLUEPRINT & UNDER-THE-HOOD WORKFLOWS
+
+### 4.1 Catalog Lifecycle Infrastructure (`CatalogController`)
+
+#### 1. Add Single Product Master (`POST /api/catalog/add`)
+
+* **Under-the-Hood Workflow:** Receives `productRequestDTO`. Validates and registers missing categories or brands recursively. Persists the structural parent product master first, loops through appended variant vectors, hooks each child SKU up via foreign keys, sets stock records to zero, and commits an `INITIAL_STOCK` change row inside the compliance ledger logs.
+
+#### 2. Update Product & Variants (`PUT /api/catalog/update/{id}`)
+
+* **Under-the-Hood Workflow:** Loads parent record by ID. Updates metadata fields. Iterates through child structures, fetching database configurations by SKU. Evaluates old vs. new price fields. If a procurement price discrepancy is discovered, it injects a `COST_UPDATE` ledger record detailing the change before updating the variant.
+
+#### 3. Delete Product Variant via Cascade Cleaner (`DELETE /api/catalog/delete/{id}`)
+
+* **Under-the-Hood Workflow:** Executed inside an isolated transactional boundary window (`@Transactional`). To clear database constraints without foreign key violations, it purges all rows in `inventoryLog` pointing to this variant ID first. It then deletes the child row out of `variantRepo`. Immediately following, it queries the variant database scanning for any remaining sibling items sharing that parent ID. If the count returns **0**, it executes a secondary cascading cleanup on the parent product master row to prevent orphaned rows on your dashboard.
+
+#### 4. Fetch Eager Listings (`GET /api/catalog/list`)
+
+* **Under-the-Hood Workflow:** Bypasses standard lazy-loading overhead by calling a custom repository `JOIN FETCH` operation. This pulls all variant variables along with their nested parent metadata parameters in a single database round-trip, eliminating the N+1 performance bottleneck.
+
+---
+
+### 4.2 Order Ingestion & Fulfillment Operations (`OrderController` & `OrderFlowController`)
+
+#### 5. Generate Picklist via Sheet Import (`POST /api/orders/generate-picklist`)
+
+* **Under-the-Hood Workflow:** Receives raw marketplace files. Hands streaming chunks to `PicklistService`, which runs header detection checks via config dictionaries. It maps columns to fields dynamically based on the platform configuration (`AMAZON` vs `FLIPKART`).
+* Executes an automatic **Idempotency Filter Pass**: Compiles standard uniqueness keys (Flipkart = `orderItemId`; Amazon = `orderId + "_" + sku`). If `orderRepo.existsByUniqueReferenceId(uniqueKey)` registers true, the loop skips the row to prevent duplicate data entry.
+* For valid rows, it records a `SalesOrder` history entry, maps core variables, resolves platform SKUs down to internal variants using the mapping engine, loops through components, and calls `updateInventory(sku, qty, "RESERVE")` to lock down stock allocations.
+* Finally, it bundles matching items together, checks physical warehouse stock limits to flag `READY` vs `OUT_OF_STOCK` rows, and applies a comparative spatial sorting sequence:
+```java
+.sorted(Comparator.comparing(PicklistResultDTO::getLocation, Comparator.nullsLast(Comparator.naturalOrder())))
+
+```
+
+
+This creates an optimized picking path organized by aisle bins to maximize warehouse floor efficiency.
+
+#### 6. Order Pipeline State Transitions & State Machine Math
+
+State changes are handled via bulk ID payload maps (`{"ids": [Long]}`).
+
+```
+[APPROVED State] ──(via Manual Inbound / API Link)──► RESERVE Action
+  Math: StockCommitted = StockCommitted + qty
+
+[SHIPPED State] ──(via Manifest Finalization Loop)──► DEDUCT Action
+  Math: StockOnHand    = StockOnHand - qty
+        StockCommitted = StockCommitted - qty
+
+[CANCELLED State / Deletion Loop] ───────────────► RELEASE Action
+  Math: StockCommitted = StockCommitted - qty
+
+```
+
+* **Process Labels (`POST /api/orders/flow/generate-labels`):** Transitions verified rows matching an `APPROVED` status to `PACKING_IN_PROGRESS`.
+* **Mark Packed (`POST /api/orders/flow/mark-packed`):** Advances the pipeline tracking state cleanly to `PACKED`.
+* **Mark Ready to Dispatch (`POST /api/orders/flow/mark-rtd`):** Advances tracking values directly to `DISPATCH_READY`.
+* **Generate Manifest (`POST /api/orders/flow/manifest`):** Creates a unique reference string (`"MAN-" + System.currentTimeMillis()`). Changes the status of selected orders to `SHIPPED`. Loops through each item line to call the `DEDUCT` action inside the inventory state machine engine, adjusting stock counts on the shelves.
+* **Cancel Orders (`POST /api/orders/flow/cancel`):** Flips status configurations directly to `CANCELLED` and triggers a `RELEASE` action inside the inventory machine engine, freeing up reserved stock allocations.
+
+#### 7. Create Manual Order (`POST /api/orders/flow/manual`)
+
+* **Under-the-Hood Workflow:** Built to handle offline B2B or custom WhatsApp checkout streams. It checks the customer repository by phone number. If the customer exists, it loads the profile; otherwise, it provisions a new customer record on the fly. It updates customer metrics dynamically, calculating total expenditures via streaming sums:
+
+$$\text{Total Spend} = \text{Total Spend} + \sum (\text{SellingPrice} \times \text{Quantity})$$
+
+
+* Generates a single unified order string (`"MAN-" + System.currentTimeMillis()`). For each line item in the payload, it triggers a `RESERVE` action to commit stock, snap-shots customer attributes onto the order row, attaches a unique composite identifier (`manualOrderId + "_" + itemDto.getSku()`), and saves the entire batch.
+
+---
+
+### 4.3 Sku Mapping & Kit Deconstruction Architecture (`MappingService`)
+
+#### 8. Resolve Cross-Platform SKU Aliases (`Internal Service Implementation`)
+
+* **Under-the-Hood Workflow:** Translates variations in multi-channel listing names down to true physical warehouse garments, while deconstructing virtual combo packs into individual items.
+* When evaluated via `resolveSku(String incomingSku, int orderQty)`:
+1. It performs a fast lookup query against your alias mapping repository: `mappingRepo.findByChannelSku(incomingSku)`. If it discovers an entry, it maps it to the true target internal master SKU string; otherwise, it falls back to the original incoming SKU.
+2. It then queries your bundle definition records: `bundleRepo.findByComboSku(resolvedSku)`.
+3. If the resolved item is not a combo bundle, it returns the SKU and quantity directly. If it *is* a combo bundle, it deconstructs it into its individual component items, applying the bundle multiplier against the total ordered quantity before passing the data map back to the execution thread:
+
+$$\text{ComponentRequiredQty} = \text{ComponentBundleRatio} \times \text{OrderQty}$$
+
+
+
+
+
+---
+
+### 4.4 Reverse Logistics Inward Infrastructure (`ReturnService`)
+
+#### 9. Process Quality-Controlled Return Inward (`POST Managed Workflow`)
+
+* **Under-the-Hood Workflow:** Handles incoming returns from courier partners and customers safely using an automated reconciliation loop.
+* Intercepts incoming `ReturnProcessDTO` details and checks for duplicates: `returnRepo.existsByTrackingId(request.getTrackingId())`. If it finds a duplicate tracking code, it blocks processing immediately.
+* For standard channel returns, it matches the tracking code against your historical data using `orderRepo.findByTrackingId()`. It looks up the associated channel SKU, marks the order record status as `RETURNED`, and sets up processing variables.
+* **The QC Evaluation Gate:** Inspects the incoming return type parameters:
+* **Courier Returns (RTO - Return to Origin):** Skips manual inspection checks since the product packaging remains unopened. It automatically sets the status to `QC_PASS` and flags the inventory action as `RESTOCKED`.
+* **Customer Returns:** Evaluates the `isGoodCondition()` flag. If it evaluates to true, it sets the status to `QC_PASS` and flags the inventory action as `RESTOCKED`. If it evaluates to false, it sets the status to `QC_FAIL` and flags the action as `SCRAPPED` to prevent damaged items from going back onto warehouse shelves.
+
+
+* **The Automated Restocking Loop:** For items flagged as `RESTOCKED`, it runs the SKU through `mappingService.resolveSku()`. This converts channel aliases and breaks down combo packs into their actual component garments. It loops through the resolved components and uses your inventory service layer to execute an `ADD` operation:
+
+$$\text{StockOnHand} = \text{StockOnHand} + \text{ReturnedComponentQty}$$
+
+
+
+This automatically returns the physical items back to their correct warehouse bin locations and synchronizes stock levels across all active marketplaces.
+
+---
+
+### 4.5 Intelligence Metrics & Predictive Forecasting Engine (`AbcAnalysisService` & `StockoutPredictorService`)
+
+#### 10. Compute Child & Parent Tier ABC Pareto Classifications (`POST /api/catalog/analytics/trigger-abc`)
+
+* **Under-the-Hood Workflow:** Processes multi-year historical order data to evaluate sales velocity and categorize items by revenue contribution.
+* It clears out old data cache lines matching the current system date, then streams data through an **Adaptive Parent SKU Parsing Algorithm**. It uses regex word boundaries to cleanly extract root design names (e.g., converting `TTS_661_ANIME_BLACK_S` or `TH-TEE-01-BLK-M` down to their base codes `TTS_661_ANIME` or `TH-TEE-01`), regardless of whether variations use hyphens or underscores.
+* Sums up cumulative gross revenue metrics and sorts entries in descending order. It then runs a cumulative Pareto calculation loop across the sorted data array, mapping each item's relative revenue contribution to the business:
+* **Category A (Top 80.0% of Revenue):** Business-critical items with high sales velocity that drive core company revenue.
+* **Category B (Next 15.0% of Revenue):** Moderate-turnover styles that provide a stable sales baseline.
+* **Category C (Bottom 5.0% of Revenue):** Slow-moving, long-tail stock units that tie up working capital.
+
+
+* Compiles the categorical ranking statistics, raw revenues, and percentage contributions into structured JSON metadata strings, and saves them directly to your snapshot cache repository.
+
+#### 11. Generate Running Stockout Predictions (`POST /api/catalog/analytics/trigger-stockout`)
+
+* **Under-the-Hood Workflow:** Calculates total unit sales per SKU over a rolling 30-day velocity window to establish an accurate daily sales run-rate:
+
+$$\text{Daily Sales Velocity} = \frac{\text{Total Units Sold Over 30 Days}}{30.0}$$
+
+
+* Queries `variantRepo.findBySku()` to cross-reference velocities against active physical warehouse stock counts. If an item has zero inventory, it skips processing to keep reporting dashboards clean.
+* For active items, it calculates the exact Days of Inventory (DOI) remaining before a stockout occurs:
+
+$$\text{Days of Inventory (DOI)} = \text{Math.round}\left(\frac{\text{Stock On Hand}}{\text{Daily Sales Velocity}}\right)$$
+
+
+* **The Graphic Scaling Guard Filter:** For low-velocity items with high stock levels, the calculated DOI can spike significantly. The engine automatically caps the DOI output at `365` days max to keep data charts and visualizations clean on the frontend layout.
+* It evaluates remaining DOI metrics against standard supplier replenishment timelines (assuming a standard 20-day production cycle):
+* **`CRITICAL_STOCKOUT`** ($\text{DOI} \le 15$ days): Stock levels are critically low. Replenishment cannot arrive before a total stockout occurs, making immediate emergency production runs necessary.
+* **`WARNING_LOW_STOCK`** ($\text{DOI} \le 30$ days): The item is inside the standard reorder window. New production runs must be initiated immediately to prevent supply chain gaps.
+* **`HEALTHY`** ($\text{DOI} > 30$ days): Stock levels are stable and secure.
+
+
+* Flattens the completed run-rate metrics, alerts, and velocities into a compressed JSON snapshot string and saves it to the database.
+
+---
+
+### 4.6 Dropdown Configuration Engine (`ConfigController`)
+
+#### 12. Fetch Master Option Lists (`GET /api/config/{category}`)
+
+* **Under-the-Hood Workflow:** Provides look-up values to populate dropdown selectors on the warehouse floor (e.g., `STAFF`, `CHANNEL`, `COURIER`). It queries the master options table, filters rows by the requested category string, and returns the metadata array to the frontend layout.
+* *Production CORS Configuration Implementation Note:* This controller requires an explicit `@CrossOrigin(origins = "*")` annotation to permit cross-origin requests. Without this, parallel frontend initialization calls (like React `Promise.all()`) will fail the preflight handshake check, causing browser requests to stall with an immediate 403 Forbidden error.
+
+---
+
+### 4.7 Attendance Kiosk & Employee Access Control (`AttendanceService`)
+
+#### 13. Process Authentication Punch & Admin Bypass (`Shared Kiosk Endpoint Workflow`)
+
+* **Under-the-Hood Workflow:** Validates employee check-ins and check-outs while enforcing automated time-gate restrictions.
+* It verifies identities by querying the staff repository and checking security PIN codes. If the PIN doesn't match, it throws an immediate validation exception.
+* It checks for existing entries matching the current date. If no entry exists, it initiates the **Punch-In Workflow**:
+* If the current time is before 08:30 AM, it blocks the entry: *"Wait! Office opens at 08:30 AM."*
+* If the current time crosses the 08:45 AM threshold, the engine initiates an **Inverted Conditional Guard Pattern** check to evaluate the user's role parameters:
+```java
+String userRole = staff.getRole() != null ? staff.getRole().toUpperCase().trim() : "EMPLOYEE";
+if (!"OWNER".equals(userRole) && !"ADMIN".equals(userRole) && !"SUPER_ADMIN".equals(userRole)) {
+    throw new RuntimeException("LOCKED: You are late (After 8:45). Contact Manager to authorize entry.");
+}
+
+```
+
+
+Standard employee accounts are blocked immediately with an explicit exception. If the account holds `OWNER` or `ADMIN` clearance, the system bypasses the time-gate restriction, logs a verification message to the console, and continues execution.
+* It sets up an `AttendanceLog` entry, captures the incoming validation photo url metadata path, flags the record as `isLate(true)` for bookkeeping audits, and saves the check-in.
+
+
+* If a check-in record already exists for the day, it initiates the **Punch-Out Workflow**. It updates the status flag to `COMPLETED`, logs the checkout time, and computes total shift times using a duration delta calculation:
+
+$$\text{Worked Hours} = \frac{\text{Duration.between}(\text{CheckInTime}, \text{CheckOutTime}).\text{toMinutes}()}{60.0}$$
+
+
+
+---
+
+### 4.8 Manufacturing Floor Asset Pipelines (`ManufacturingController` & `ManufacturingService`)
+
+#### 14. Allocate Raw Material & Provision Production Lot (`POST /api/manufacturing/lot/create`)
+
+* **Under-the-Hood Workflow:** Processes raw fabric allocations and schedules production runs. It locates the requested fabric roll using `fabricId`. It runs a strict **Material Capacity Check** to verify that the roll has enough weight to handle the request: `fabric.getRemainingKgs() < lot.getFabricUsedKgs()`. If stock is insufficient, it blocks allocation.
+* For valid requests, it deducts the required weight from the fabric roll balance immediately, maps nested size arrays (`S`, `M`, `L`, `XL`) into child item rows (`LotItem`), assigns a unique tracking number (`"LOT-" + System.currentTimeMillis()`), sets the default status tracking variable to `"NEW"`, and saves the lot.
+
+#### 15. Cancel Active Production Run (`POST /api/manufacturing/lot/cancel/{id}`)
+
+* **Under-the-Hood Workflow:** Rescinds active production lots securely while protecting historical data. It loads the lot record and runs a safety verification check. If the status is already marked `"COMPLETED"`, it throws an exception to block modifications.
+* **The Automated Material Reconciliation Routine:** It sets the status flag to `"CANCELLED"`. To prevent phantom material losses, the engine dynamically checks the parent fabric roll relationship, calculates the weight used by the lot, and returns those kilograms back to the raw material stock balances automatically:
+
+$$\text{Fabric.RemainingKgs} = \text{Fabric.RemainingKgs} + \text{Lot.FabricUsedKgs}$$
+
+
+
+---
+
+## SECTION 5: SDE INTERVIEW ARCHITECTURAL TALKING POINTS
+
+Prepare to walk through these core engineering deep-dives during system design and technical SDE interviews:
+
+### 5.1 High-Performance N+1 Optimization Pattern
+
+> *"In the T-verse catalog retrieval architecture, I bypassed traditional Hibernate lazy-loading bottlenecks by using custom repository query configurations with explicit `JOIN FETCH` statements. This joins the parent design metadata parameters onto child SKU stock items in a single database round-trip, completely eliminating the N+1 database performance trap and cutting catalog dashboard rendering speeds under concurrent load."*
+
+### 5.2 Asynchronous Snapshot Pattern for Analytics Scalability
+
+> *"To ensure top-level analytics dashboards remain highly performant, I implemented a decoupled Asynchronous Snapshot Pattern. Instead of running expensive multi-variable database queries over millions of sales records during business hours, heavy analysis routines (such as the cumulative Pareto ABC revenue analysis) are shifted to background CRON threads. These threads calculate statistics off-peak, flatten the results into structured JSON strings, and save them into a high-speed cache lookup table—reducing data fetching times from several seconds down to sub-millisecond response windows."*
+
+### 5.3 Two-Way Multi-Channel Inventory Reconciliation Loop
+
+> *"I designed an atomic inventory mapping architecture to solve multi-channel SKU inconsistencies. By separating platform-specific channel listings and virtual combo kits from our underlying warehouse inventory tables, a centralized mapping engine translates incoming listing variations down to their core physical components during ingestion. This creates an airtight Two-Way Reconciliation Loop: forward logistics files trigger precise stock reservation locks, while reverse logistics return scans automatically deconstruct combo packages and return garments back to their warehouse bin counts without manual data entry errors."*
+
+### 5.4 Defensive State Optimization Against Inventory Leaks
+
+> *"During an audit of our manufacturing and fulfillment services, I identified data vulnerabilities where canceling active operations led to permanent material tracking losses. I refactored the system's state machines to handle automated material reconciliation loops inside explicit `@Transactional` boundaries. Now, when a production lot or an outbound shipment file cancellation occurs, the engine automatically checks relational mapping tables and returns allocated fabric weights or product stock counts back to their raw inventory balances, preventing phantom stock losses."*
