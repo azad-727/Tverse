@@ -1,5 +1,6 @@
 package com.thalasi.tverse.service;
 
+import com.thalasi.tverse.model.SalesOrder;
 import com.thalasi.tverse.model.productVariant;
 import com.thalasi.tverse.repository.ProductVariantRepo;
 import com.thalasi.tverse.repository.SalesOrderRepo;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -76,11 +78,46 @@ public class DashboardService {
                 productionAlerts.add(alert);
             }
         }
+        LocalDateTime startOfDay = LocalDateTime.now().with(LocalTime.MIN);
+        LocalDateTime endOfDay = LocalDateTime.now().with(LocalTime.MAX);
+
+        List<SalesOrder> todaysOrders = salesRepo.findOrdersByDateRange(startOfDay, endOfDay);
+
+        BigDecimal dailySalesAmount = BigDecimal.ZERO;
+        int dailySalesQty = 0;
+
+        for (SalesOrder order : todaysOrders) {
+            String status = order.getOrderStatus() != null ? order.getOrderStatus().toUpperCase() : "";
+
+            // Only count successful/shipped orders, exclude returns/cancellations
+            if (!status.equals("CANCELLED") && !status.equals("RTO") && !status.equals("RTV")) {
+                BigDecimal price = BigDecimal.ZERO;
+                String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
+
+                // Reuse your channel-aware price extraction logic
+                if (orderChannel.contains("AMAZON")) {
+                    if (order.getProductPayment() != null && order.getProductPayment().compareTo(BigDecimal.ZERO) > 0) {
+                        price = order.getProductPayment();
+                    } else if (order.getItemCost() != null && order.getItemCost().compareTo(BigDecimal.ZERO) > 0) {
+                        price = order.getItemCost();
+                    } else if (order.getSellingPrice() != null) {
+                        price = order.getSellingPrice();
+                    }
+                } else {
+                    price = order.getSellingPrice() != null ? order.getSellingPrice() : BigDecimal.ZERO;
+                }
+
+                dailySalesAmount = dailySalesAmount.add(price.multiply(new BigDecimal(order.getQuantity())));
+                dailySalesQty += order.getQuantity();
+            }
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("totalStockCount", totalItems);
         response.put("totalInventoryValue", totalValue);
         response.put("productionAlerts", productionAlerts);
+        response.put("dailySalesAmount",dailySalesAmount);
+        response.put("dailySalesQty",dailySalesQty);
         response.put("criticalAlerts", criticalAlerts);
 
         return response;
