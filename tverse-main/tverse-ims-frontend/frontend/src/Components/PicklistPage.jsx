@@ -111,24 +111,80 @@ const PicklistPage = () => {
     return (
         <div className="container-fluid p-0">
             
-            {/* MOBILE RESPONSIVE STYLE ENGINE */}
-            <style>{`
-                @media (max-width: 768px) {
-                    .table-responsive {
-                        -webkit-overflow-scrolling: touch;
-                        scrollbar-width: none;
-                    }
-                    .table-responsive::-webkit-scrollbar {
-                        display: none !important;
-                    }
-                    .img-fixed {
-                        max-width: 40px;
-                        max-height: 40px;
-                        object-fit: contain;
-                    }
+           {/* MOBILE RESPONSIVE STYLE ENGINE */}
+                    <style>{`
+            @media print {
+                .btn, .sidebar, .navbar, .drawer-backdrop, .drawer-panel {
+                    display: none !important;
                 }
-            `}</style>
 
+                /* Force full page width and fixed layout */
+                .modern-table, table {
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                }
+
+                /* THE KEY FIX: enforce column widths in print */
+                table colgroup,
+                table thead tr th:nth-child(1) { width: 12% !important; }  /* LOC */
+                table thead tr th:nth-child(2) { width: 8% !important; }   /* IMG */
+                table thead tr th:nth-child(3) { width: 22% !important; }  /* SKU */
+                table thead tr th:nth-child(4) { width: 38% !important; }  /* PRODUCT NAME */
+                table thead tr th:nth-child(5) { width: 10% !important; }  /* QTY */
+                table thead tr th:nth-child(6) { width: 10% !important; }  /* CHECK */
+
+                /* Force ALL cells to wrap and never overflow */
+                table td, table th {
+                    word-break: break-all !important;
+                    white-space: normal !important;
+                    overflow: hidden !important;
+                    padding: 6px 4px !important;
+                    font-size: 11px !important;
+                }
+
+                /* Override the no-wrap class that's causing overflow */
+                .no-wrap-data {
+                    white-space: normal !important;
+                    word-break: break-all !important;
+                    overflow: hidden !important;
+                    font-size: 11px !important;
+                }
+
+                /* Shrink images for print */
+                .img-fixed {
+                    max-width: 35px !important;
+                    max-height: 35px !important;
+                }
+
+                /* QTY badge - make it print-friendly */
+                .badge.fs-4 {
+                    font-size: 13px !important;
+                    padding: 4px 6px !important;
+                }
+
+                /* SKU monospace text - must wrap */
+                .font-monospace {
+                    font-size: 10px !important;
+                    word-break: break-all !important;
+                    white-space: normal !important;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .table-responsive {
+                    -webkit-overflow-scrolling: touch;
+                    scrollbar-width: none;
+                }
+                .table-responsive::-webkit-scrollbar {
+                    display: none !important;
+                }
+                .img-fixed {
+                    max-width: 40px;
+                    max-height: 40px;
+                    object-fit: contain;
+                }
+            }
+        `}</style>
             {/* Header */}
             {/* ADDED: flex-column flex-md-row and gap-3 for mobile stacking */}
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3 d-print-none">
