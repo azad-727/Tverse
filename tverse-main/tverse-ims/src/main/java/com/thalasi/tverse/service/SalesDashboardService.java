@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -23,56 +24,49 @@ public class SalesDashboardService {
     @Autowired
     private SalesOrderRepo salesOrderRepo;
 
-    public SalesOverviewDTO getDashboardOverview(int daysToLookBack, String channel) {
 
-        // 1. Calculate the date window
-        LocalDateTime endDate = LocalDateTime.now();
-        LocalDateTime startDate = endDate.minusDays(daysToLookBack);
+    public SalesOverviewDTO getDashboardOverviewByRange(String fromDate, String toDate, String channel) {
 
-        if (daysToLookBack > 5000) {
-            startDate = LocalDateTime.now().minusYears(20);
-        }
+        // Parse the date strings into LocalDateTime
+        LocalDateTime startDate = LocalDate.parse(fromDate).atStartOfDay();
+        LocalDateTime endDate   = LocalDate.parse(toDate).atTime(23, 59, 59);
 
-        // 2. Fetch all orders in that timeframe
+        // Fetch orders in that range — reuses your existing repo method
         List<SalesOrder> orders = salesOrderRepo.findOrdersByDateRange(startDate, endDate);
-        SalesOverviewDTO dto = new SalesOverviewDTO();
 
+        // Everything below is identical to getDashboardOverview() —
+        // just pass the orders list into the same crunching logic.
+        // To avoid duplication, refactor like this:
+
+        return crunchOrders(orders, channel);
+    }
+
+    // REFACTOR: Extract the crunching logic from getDashboardOverview() into this private method
+// so both getDashboardOverview() and getDashboardOverviewByRange() share it.
+    private SalesOverviewDTO crunchOrders(List<SalesOrder> orders, String channel) {
+
+        SalesOverviewDTO dto = new SalesOverviewDTO();
         Map<String, DailyTrendDTO> trendMap = new HashMap<>();
         Map<String, ProductPerformanceDTO> productMap = new HashMap<>();
         Map<String, BigDecimal> channelMap = new HashMap<>();
         Map<String, BigDecimal> monthMap = new HashMap<>();
 
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd MMM");
-        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMM yyyy"); // NEW: For the Bar Chart
+        DateTimeFormatter dateFormatter  = DateTimeFormatter.ofPattern("dd MMM");
+        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("MMM yyyy");
 
-        // 3. Crunch the numbers (BULLETPROOF VERSION)
         for (SalesOrder order : orders) {
-
-            // --- FILTER: Channel Isolation ---
             if (channel != null && !channel.equalsIgnoreCase("ALL") && !channel.isEmpty()) {
                 String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
-                if (!orderChannel.contains(channel.toUpperCase())) {
-                    continue;
-                }
+                if (!orderChannel.contains(channel.toUpperCase())) continue;
             }
+            if (order.getOrderDate() == null) continue;
 
-            // --- SAFETY CHECK 1: Skip orders with corrupted/missing dates ---
-            if (order.getOrderDate() == null) {
-                continue;
-            }
-
-            // --- SAFETY CHECK 2: CHANNEL-AWARE PRICE EXTRACTION ---
             BigDecimal price = BigDecimal.ZERO;
             String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
-
             if (orderChannel.contains("AMAZON")) {
-                if (order.getProductPayment() != null && order.getProductPayment().compareTo(BigDecimal.ZERO) > 0) {
-                    price = order.getProductPayment();
-                } else if (order.getItemCost() != null && order.getItemCost().compareTo(BigDecimal.ZERO) > 0) {
-                    price = order.getItemCost();
-                } else if (order.getSellingPrice() != null) {
-                    price = order.getSellingPrice();
-                }
+                if (order.getProductPayment() != null && order.getProductPayment().compareTo(BigDecimal.ZERO) > 0) price = order.getProductPayment();
+                else if (order.getItemCost() != null && order.getItemCost().compareTo(BigDecimal.ZERO) > 0) price = order.getItemCost();
+                else if (order.getSellingPrice() != null) price = order.getSellingPrice();
             } else {
                 price = order.getSellingPrice() != null ? order.getSellingPrice() : BigDecimal.ZERO;
             }
@@ -81,90 +75,82 @@ public class SalesDashboardService {
             int qty = order.getQuantity();
             String status = order.getOrderStatus() != null ? order.getOrderStatus().toUpperCase() : "UNKNOWN";
 
-            // --- A. Top Level KPIs ---
             dto.setGrossSales(dto.getGrossSales().add(orderValue));
             dto.setGrossUnits(dto.getGrossUnits() + qty);
 
-            // --- B. Group By Date (For the Line Chart) ---
             String dateStr = order.getOrderDate().format(dateFormatter);
             DailyTrendDTO trend = trendMap.computeIfAbsent(dateStr, k -> new DailyTrendDTO(dateStr));
             trend.gross = trend.gross.add(orderValue);
 
-            // --- C. Group By SKU (For the Table) ---
             String sku = order.getSku();
             ProductPerformanceDTO prod = null;
-            if(sku != null && !sku.trim().isEmpty()) {
+            if (sku != null && !sku.trim().isEmpty()) {
                 prod = productMap.computeIfAbsent(sku, k -> new ProductPerformanceDTO(sku));
                 prod.gross = prod.gross.add(orderValue);
                 prod.units += qty;
             }
 
-            // --- D. Group By Channel (For the Pie Chart) ---
-            String channelName = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
-            channelMap.put(channelName, channelMap.getOrDefault(channelName, BigDecimal.ZERO).add(orderValue));
+            channelMap.put(orderChannel, channelMap.getOrDefault(orderChannel, BigDecimal.ZERO).add(orderValue));
 
-            // --- E. Group By Month (For the Bar Chart) ---
             String monthStr = order.getOrderDate().format(monthFormatter);
             monthMap.put(monthStr, monthMap.getOrDefault(monthStr, BigDecimal.ZERO).add(orderValue));
 
-            // --- F. Status Switch ---
             switch (status) {
                 case "CANCELLED":
                     dto.setCancellations(dto.getCancellations().add(orderValue));
                     dto.setCancelledUnits(dto.getCancelledUnits() + qty);
-                    if(prod != null) prod.cancellations += qty;
+                    if (prod != null) prod.cancellations += qty;
                     break;
-
                 case "RTO":
                     dto.setReturns(dto.getReturns().add(orderValue));
                     dto.setReturnUnits(dto.getReturnUnits() + qty);
                     dto.setRtoUnits(dto.getRtoUnits() + qty);
                     trend.returns = trend.returns.add(orderValue);
-                    if(prod != null) prod.returns += qty;
+                    if (prod != null) prod.returns += qty;
                     break;
-
                 case "RTV":
                     dto.setReturns(dto.getReturns().add(orderValue));
                     dto.setReturnUnits(dto.getReturnUnits() + qty);
                     dto.setRtvUnits(dto.getRtvUnits() + qty);
                     trend.returns = trend.returns.add(orderValue);
-                    if(prod != null) prod.returns += qty;
+                    if (prod != null) prod.returns += qty;
                     break;
-
                 case "SHIPPED":
                 case "DELIVERED":
                     dto.setNetSales(dto.getNetSales().add(orderValue));
                     dto.setNetUnits(dto.getNetUnits() + qty);
                     trend.net = trend.net.add(orderValue);
-                    if(prod != null) prod.netUnits += qty;
+                    if (prod != null) prod.netUnits += qty;
                     break;
             }
         }
 
-        // --- 4. Package the Grouped Data ---
         dto.setDailyTrends(new ArrayList<>(trendMap.values()));
-
-        List<ProductPerformanceDTO> sortedProducts = productMap.values().stream()
+        dto.setTopProducts(productMap.values().stream()
                 .sorted((a, b) -> b.gross.compareTo(a.gross))
-                .collect(Collectors.toList());
-        dto.setTopProducts(sortedProducts);
-
-        // Package Channel Pie Chart Data
+                .collect(Collectors.toList()));
         channelMap.forEach((name, value) -> {
             Map<String, Object> c = new HashMap<>();
-            c.put("name", name);
-            c.put("value", value);
+            c.put("name", name); c.put("value", value);
             dto.channelData.add(c);
         });
-
-        // Package Monthly Bar Chart Data
         monthMap.forEach((month, gross) -> {
             Map<String, Object> m = new HashMap<>();
-            m.put("month", month);
-            m.put("gross", gross);
+            m.put("month", month); m.put("gross", gross);
             dto.monthlyData.add(m);
         });
 
         return dto;
     }
+
+    // UPDATE getDashboardOverview() to call crunchOrders() instead of duplicating logic:
+    public SalesOverviewDTO getDashboardOverview(int daysToLookBack, String channel) {
+        LocalDateTime endDate   = LocalDateTime.now();
+        LocalDateTime startDate = daysToLookBack > 5000
+                ? LocalDateTime.now().minusYears(20)
+                : endDate.minusDays(daysToLookBack);
+        List<SalesOrder> orders = salesOrderRepo.findOrdersByDateRange(startDate, endDate);
+        return crunchOrders(orders, channel);
+    }
+
 }

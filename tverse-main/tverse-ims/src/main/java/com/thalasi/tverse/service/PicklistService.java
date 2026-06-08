@@ -66,11 +66,11 @@
             }
             String status=rawStatus.toUpperCase().trim();
             //Amazon Mapping
-            if(status.equals("NEW")||status.equals("PENDING")){
+            if(status.equals("NEW")||status.equals("PENDING") || status.equals("CREATED")){
                 return "APPROVED";
             }
             if(status.equals("APPROVED")||status.equals("PACKED")||status.equals("UPCOMING")||
-            status.equals("CANCELLED")){
+                    status.equals("CANCELLED")){
                 return status;
             }
             return "APPROVED";
@@ -292,6 +292,33 @@
                 map.put("warehouse_code","Order Type");
                 map.put("customer_name","Buyer name");
             }
+            else if(Channel.equals("myntra")){
+                map.put("order_date","Created On");
+                map.put("shipment_id","Store Packet ID");
+                map.put("order_item_id","Order_release_id");
+                map.put("order_id","Order id");
+                map.put("order_type","Type");
+                map.put("listing_id","Myntra SKU code");
+                map.put("sku","Seller_sku_code");
+                map.put("selling_price","Selling value");
+                map.put("customer_city","Destination City");
+                map.put("customer_state","Destination state");
+                map.put("pincode","Destination pincode");
+                map.put("tracking_id","Tracking_id");
+            }
+            else if(Channel.equals("meesho")){
+                map.put("order_date","Order Date");
+                map.put("warehouse_code","Order source");
+                map.put("order_id","Sub Order No");
+                map.put("listing_id","Catalog ID");
+                map.put("selling_price","Supplier Discounted Price (Incl GST and Commision)");
+                map.put("quantity","Quantity");
+                map.put("customer_state","Customer State");
+                map.put("tracking_id","Packet Id");
+                map.put("sku","SKU");
+                map.put("meesho_size","Size");
+
+            }
             else{
                 System.out.println("Unknown Channel: " + channel);
             }
@@ -305,155 +332,165 @@
             Map<String,String> config = getHeaderMapping(channel);
             Map<String,Integer> indices=new HashMap<>();
 
-             try(BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream()))){
-                 String line;
-                 while((line = br.readLine())!=null){
-                     if(line.trim().isEmpty()) continue;
-                     String[] cols = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+            try(BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream()))){
+                String line;
+                while((line = br.readLine())!=null){
+                    if(line.trim().isEmpty()) continue;
+                    String[] cols = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
 
-                     //------ Phase 1 Mapping the Row Discovery and fetching index of all rows required in indices
+                    //------ Phase 1 Mapping the Row Discovery and fetching index of all rows required in indices
 
-                     if(indices.isEmpty()){
-                         System.out.println("--- DEBUG: STARTING HEADER SCAN ---"); // <--- ADD THIS
+                    if(indices.isEmpty()){
+                        System.out.println("--- DEBUG: STARTING HEADER SCAN ---"); // <--- ADD THIS
 
-                         for(int i=0;i<cols.length;i++){
-                             String rawHeader = cols[i];
-                             if (rawHeader.startsWith("\uFEFF")) {
-                                 rawHeader = rawHeader.substring(1);
-                             }
-                             String fileHeader = rawHeader.toLowerCase().trim().replace("\"", "");
-                             System.out.println("Index " + i + " | File Header: [" + fileHeader + "]");
-                             for(Map.Entry<String,String> entry: config.entrySet()){
-                                 System.out.println("Compare Check Mapping "+":"+(entry.getValue().toLowerCase().trim())+"| config: "+fileHeader);
-                                 //problem area checking random value with header column
-                                 if(fileHeader.equals(entry.getValue().toLowerCase().trim())){
-                                     indices.put(entry.getKey(), i);
-                                     System.out.println("   ✅ MATCHED! " + fileHeader + " -> " + entry.getKey());
-                                 }
-                             }
-                         }
-                         // Safety Check: Did we actually find the SKU column?
-                         if(!indices.containsKey("sku")){
-                             System.out.println("Critical Error:Could not find 'SKU' column. Check mapping");
-                         }
-                         System.out.println("--- DEBUG: MAP RESULT: " + indices.toString());
-                         continue;
-                     }
+                        for(int i=0;i<cols.length;i++){
+                            String rawHeader = cols[i];
+                            if (rawHeader.startsWith("\uFEFF")) {
+                                rawHeader = rawHeader.substring(1);
+                            }
+                            String fileHeader = rawHeader.toLowerCase().trim().replace("\"", "");
+                            System.out.println("Index " + i + " | File Header: [" + fileHeader + "]");
+                            for(Map.Entry<String,String> entry: config.entrySet()){
+                                System.out.println("Compare Check Mapping "+":"+(entry.getValue().toLowerCase().trim())+"| config: "+fileHeader);
+                                //problem area checking random value with header column
+                                if(fileHeader.equals(entry.getValue().toLowerCase().trim())){
+                                    indices.put(entry.getKey(), i);
+                                    System.out.println("   ✅ MATCHED! " + fileHeader + " -> " + entry.getKey());
+                                }
+                            }
+                        }
+                        // Safety Check: Did we actually find the SKU column?
+                        if(!indices.containsKey("sku")){
+                            System.out.println("Critical Error:Could not find 'SKU' column. Check mapping");
+                        }
+                        System.out.println("--- DEBUG: MAP RESULT: " + indices.toString());
+                        continue;
+                    }
 
-                     //-------- Phase 2: Data Extraction (Run for every order row) ----
+                    //-------- Phase 2: Data Extraction (Run for every order row) ----
 
-                     if(indices.containsKey("sku") && cols.length > indices.get("sku")){
-                         OrderRow row = new OrderRow();
+                    if(indices.containsKey("sku") && cols.length > indices.get("sku")){
+                        OrderRow row = new OrderRow();
 
-                         // 1. Get Mandatory SKU
-                         int skuIndex = indices.get("sku");
-                         row.sku = clean(cols[skuIndex]);
-                         row.batchId = batchId;
+                        // 1. Get Mandatory SKU
+                        int skuIndex = indices.get("sku");
 
-                         // Skip if this is just a repeated header or empty line
-                         if(row.sku.isEmpty() || row.sku.equalsIgnoreCase(config.get("sku"))) continue;
+                        row.sku = clean(cols[skuIndex]);
+                        if(indices.containsKey("meesho_size") && channel.equalsIgnoreCase("meesho")){
+                            int meeshoSize=indices.get("meesho_size");
+                            row.sku=row.sku+"_"+clean(cols[meeshoSize]);
+                        }
+                        row.batchId = batchId;
 
-                         // 2. Get Dynamic Fields (Using getSafeVal for safety)
-                         if(indices.containsKey("order_id"))
-                             row.orderId = getSafeVal(cols, indices.get("order_id"));
+                        // Skip if this is just a repeated header or empty line
+                        if(row.sku.isEmpty() || row.sku.equalsIgnoreCase(config.get("sku"))) continue;
 
-                         if(indices.containsKey("order_item_id"))
-                             row.orderItemId = getSafeVal(cols, indices.get("order_item_id")).replace("'","");
+                        // 2. Get Dynamic Fields (Using getSafeVal for safety)
+                        if(indices.containsKey("order_id"))
+                            row.orderId = getSafeVal(cols, indices.get("order_id"));
 
-                         if(indices.containsKey("product_name"))
-                             row.productTitle = getSafeVal(cols, indices.get("product_name"));
+                        if(indices.containsKey("order_item_id"))
+                            row.orderItemId = getSafeVal(cols, indices.get("order_item_id")).replace("'","");
 
-                         if(indices.containsKey("shipment_id"))
-                             row.shipmentId = getSafeVal(cols, indices.get("shipment_id"));
+                        if(indices.containsKey("product_name"))
+                            row.productTitle = getSafeVal(cols, indices.get("product_name"));
 
-                         // This was the one causing the crash (Index 24)
-                         if(indices.containsKey("customer_city"))
-                             row.city = getSafeVal(cols, indices.get("customer_city"));
+                        if(indices.containsKey("shipment_id"))
+                            row.shipmentId = getSafeVal(cols, indices.get("shipment_id"));
 
-                         if(indices.containsKey("asin")) {
-                             row.asin = getSafeVal(cols, indices.get("asin"));
-                             System.out.print("Asin " + row.asin + " ");
-                         }
+                        // This was the one causing the crash (Index 24)
+                        if(indices.containsKey("customer_city"))
+                            row.city = getSafeVal(cols, indices.get("customer_city"));
 
-                         if(indices.containsKey("channel"))
-                             row.channel = getSafeVal(cols, indices.get("channel"));
+                        if(indices.containsKey("asin")) {
+                            row.asin = getSafeVal(cols, indices.get("asin"));
+                            System.out.print("Asin " + row.asin + " ");
+                        }
 
-                         if(indices.containsKey("customer_state"))
-                             row.state = getSafeVal(cols, indices.get("customer_state"));
+                        if(indices.containsKey("channel"))
+                            row.channel = getSafeVal(cols, indices.get("channel"));
 
-                         if(indices.containsKey("fsn"))
-                             row.fsn = getSafeVal(cols, indices.get("fsn"));
+                        if(indices.containsKey("customer_state"))
+                            row.state = getSafeVal(cols, indices.get("customer_state"));
 
-                         if(indices.containsKey("invoice_number"))
-                             row.invoiceNumber = getSafeVal(cols, indices.get("invoice_number"));
+                        if(indices.containsKey("fsn"))
+                            row.fsn = getSafeVal(cols, indices.get("fsn"));
 
-                         if(indices.containsKey("product_payment")) {
-                             row.product_payment = parseCurrency(getSafeVal(cols, indices.get("product_payment")));
-                         }
+                        if(indices.containsKey("invoice_number"))
+                            row.invoiceNumber = getSafeVal(cols, indices.get("invoice_number"));
 
-                         // Date Parsing
-                         if(indices.containsKey("order_date")) {
-                             try {
-                                 String dateStr = getSafeVal(cols, indices.get("order_date"));
-                                 // Try parsing, fallback to NOW
-                                 // Note: You might need a formatter here if the string isn't ISO format
-                                 // row.orderDate = LocalDateTime.parse(dateStr);
-                                 row.orderDate = LocalDateTime.now();
-                                 row.dispatchByDate = LocalDateTime.now().plusHours(24);
-                             } catch(Exception e) {
-                                 row.orderDate = LocalDateTime.now();
-                                 row.dispatchByDate = LocalDateTime.now().plusHours(24);
-                             }
-                         } else {
-                             row.orderDate = LocalDateTime.now();
-                             row.dispatchByDate = LocalDateTime.now().plusHours(24);
-                         }
+                        if(indices.containsKey("product_payment")) {
+                            row.product_payment = parseCurrency(getSafeVal(cols, indices.get("product_payment")));
+                        }
 
-                         if(indices.containsKey("order_status"))
-                             row.status = getSafeVal(cols, indices.get("order_status"));
+                        // Date Parsing
+                        if(indices.containsKey("order_date")) {
+                            try {
+                                String dateStr = getSafeVal(cols, indices.get("order_date"));
+                                // Try parsing, fallback to NOW
+                                // Note: You might need a formatter here if the string isn't ISO format
+                                // row.orderDate = LocalDateTime.parse(dateStr);
+                                row.orderDate = LocalDateTime.now();
+                                row.dispatchByDate = LocalDateTime.now().plusHours(24);
+                            } catch(Exception e) {
+                                row.orderDate = LocalDateTime.now();
+                                row.dispatchByDate = LocalDateTime.now().plusHours(24);
+                            }
+                        } else {
+                            row.orderDate = LocalDateTime.now();
+                            row.dispatchByDate = LocalDateTime.now().plusHours(24);
+                        }
 
-                         if(indices.containsKey("pincode"))
-                             row.pincode = getSafeVal(cols, indices.get("pincode"));
+                        if(indices.containsKey("order_status"))
+                            row.status = getSafeVal(cols, indices.get("order_status"));
 
-                         // Numeric Parsing
-                         if(indices.containsKey("quantity")) {
-                             try {
-                                 row.qty = Integer.parseInt(getSafeVal(cols, indices.get("quantity")));
-                             } catch(Exception e) { row.qty = 1; }
-                         }
+                        if(indices.containsKey("pincode"))
+                            row.pincode = getSafeVal(cols, indices.get("pincode"));
 
-                         if(indices.containsKey("selling_price")) {
-                             try {
-                                 row.amount = parseCurrency(getSafeVal(cols, indices.get("selling_price")));
-                             } catch(Exception e) {
-                                 row.amount = BigDecimal.valueOf(0.00);
-                                 System.out.println("Error Occurred in selling price: " + e + " ");
-                             }
-                         }
+                        // Numeric Parsing
+                        if(indices.containsKey("quantity")) {
+                            try {
+                                row.qty = Integer.parseInt(getSafeVal(cols, indices.get("quantity")));
 
-                         if(indices.containsKey("tracking_id"))
-                             row.trackingId = getSafeVal(cols, indices.get("tracking_id"));
+                            } catch(Exception e) { row.qty = 1; }
+                        }else{
+                            if(channel.equalsIgnoreCase("myntra")){
+                                row.qty=1;
+                            }
+                        }
 
-                         if(indices.containsKey("warehouse_code")) {
-                             try {
-                                 row.warehouseCode = getSafeVal(cols, indices.get("warehouse_code"));
-                             } catch (Exception e) {
-                                 System.out.println("Error Occurred in warehouse code: " + e + " ");
-                             }
-                         }
+                        if(indices.containsKey("selling_price")) {
+                            try {
+                                row.amount = parseCurrency(getSafeVal(cols, indices.get("selling_price")));
+                            } catch(Exception e) {
+                                row.amount = BigDecimal.valueOf(0.00);
+                                System.out.println("Error Occurred in selling price: " + e + " ");
+                            }
+                        }
 
-                         if(indices.containsKey("customer_name")) {
-                             try {
-                                 row.buyerName = getSafeVal(cols, indices.get("customer_name"));
-                             } catch (Exception e) {
-                                 System.out.println("Error Occurred in customer name: " + e + " ");
-                             }
-                         }
+                        if(indices.containsKey("tracking_id"))
+                            row.trackingId = getSafeVal(cols, indices.get("tracking_id"));
 
-                         list.add(row);
-                     }
-                 }
-             }
+                        if(indices.containsKey("warehouse_code")) {
+                            try {
+                                row.warehouseCode = getSafeVal(cols, indices.get("warehouse_code"));
+                            } catch (Exception e) {
+                                System.out.println("Error Occurred in warehouse code: " + e + " ");
+                            }
+                        }
+
+                        if(indices.containsKey("customer_name")) {
+                            try {
+                                row.buyerName = getSafeVal(cols, indices.get("customer_name"));
+                            } catch (Exception e) {
+                                System.out.println("Error Occurred in customer name: " + e + " ");
+                            }
+                        }
+
+                        list.add(row);
+                    }
+                }
+            }
 
             return list;
         }
@@ -504,6 +541,12 @@
                         orderRow.channel = channel;
                         orderRow.batchId=batchId;
 
+                        // --- Some Custom Channel Filters
+                        if(indices.containsKey("meesho_size") && channel.equalsIgnoreCase("meesho")){
+                            Cell meeshoSize=row.getCell(indices.get("meesho_size"));
+                            orderRow.sku=orderRow.sku+"_"+formatter.formatCellValue(meeshoSize).trim();
+                        }
+
                         // --- String Fields (Check map -> Get Cell -> Format) ---
                         if (indices.containsKey("order_id")) orderRow.orderId = getVal(row, indices.get("order_id"), formatter);
                         if (indices.containsKey("order_item_id")) orderRow.orderItemId = getVal(row, indices.get("order_item_id"), formatter);
@@ -526,7 +569,13 @@
                             try {
                                 String q = getVal(row, indices.get("quantity"), formatter);
                                 orderRow.qty = (int) Double.parseDouble(q); // Handles "1.0"
+
                             } catch (Exception e) { orderRow.qty = 1; }
+                        }
+                        else{
+                            if(channel.equalsIgnoreCase("myntra")){
+                                orderRow.qty=1;
+                            }
                         }
 
                         if (indices.containsKey("selling_price")) {

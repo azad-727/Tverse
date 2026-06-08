@@ -112,17 +112,25 @@ public class CatalogController {
 
     @GetMapping("/analytics/sales-overview")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
-    public ResponseEntity<?> getSalesOverview(
+    public ResponseEntity<SalesOverviewDTO> getSalesOverview(
             @RequestParam(defaultValue = "7") int days,
-            @RequestParam(defaultValue = "ALL") String channel) { // NEW: Listen for the channel!
-        try {
-            // Pass BOTH parameters into your newly robust service
-            SalesOverviewDTO overview = dashboardService.getDashboardOverview(days, channel);
-            return ResponseEntity.ok(overview);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Failed to load dashboard data: " + e.getMessage());
+            @RequestParam(defaultValue = "ALL") String channel,
+            @RequestParam(required = false) String fromDate,   // NEW: e.g. "2024-01-01"
+            @RequestParam(required = false) String toDate      // NEW: e.g. "2024-01-31"
+    ) {
+        SalesOverviewDTO result;
+
+        if (fromDate != null && !fromDate.isEmpty() && toDate != null && !toDate.isEmpty()) {
+            // Custom date range mode
+            result = dashboardService.getDashboardOverviewByRange(fromDate, toDate, channel);
+        } else {
+            // Preset days mode (existing behaviour)
+            result = dashboardService.getDashboardOverview(days, channel);
         }
+
+        return ResponseEntity.ok(result);
     }
+
 
     @PostMapping("/analytics/trigger-stockout")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
