@@ -225,6 +225,7 @@ const PicklistPage = () => {
                                     <option value="Flipkart">Flipkart</option>
                                     <option value="Amazon">Amazon</option>
                                     <option value="Meesho">Meesho</option>
+                                    <option value="Meesho">Myntra</option>
                                     <option value="Website">My Website</option>
                                     <option value="B2B">Wholesale / B2B</option>
                                 </select>
