@@ -29,6 +29,7 @@ import java.nio.file.StandardCopyOption;
 
 @RestController
 @RequestMapping("/api/catalog")
+@CrossOrigin(origins = "*")
 public class CatalogController {
     @Autowired private SalesDashboardService dashboardService;
     @Autowired private catalogService catalogService;
@@ -115,6 +116,7 @@ public class CatalogController {
     public ResponseEntity<SalesOverviewDTO> getSalesOverview(
             @RequestParam(defaultValue = "7") int days,
             @RequestParam(defaultValue = "ALL") String channel,
+            @RequestParam(defaultValue = "ALL") String brand,
             @RequestParam(required = false) String fromDate,   // NEW: e.g. "2024-01-01"
             @RequestParam(required = false) String toDate      // NEW: e.g. "2024-01-31"
     ) {
@@ -122,15 +124,14 @@ public class CatalogController {
 
         if (fromDate != null && !fromDate.isEmpty() && toDate != null && !toDate.isEmpty()) {
             // Custom date range mode
-            result = dashboardService.getDashboardOverviewByRange(fromDate, toDate, channel);
+            result = dashboardService.getDashboardOverviewByRange(fromDate, toDate, channel,brand);
         } else {
             // Preset days mode (existing behaviour)
-            result = dashboardService.getDashboardOverview(days, channel);
+            result = dashboardService.getDashboardOverview(days, channel,brand);
         }
 
         return ResponseEntity.ok(result);
     }
-
 
     @PostMapping("/analytics/trigger-stockout")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")

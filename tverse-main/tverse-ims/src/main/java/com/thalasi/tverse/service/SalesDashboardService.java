@@ -24,8 +24,7 @@ public class SalesDashboardService {
     @Autowired
     private SalesOrderRepo salesOrderRepo;
 
-
-    public SalesOverviewDTO getDashboardOverviewByRange(String fromDate, String toDate, String channel) {
+    public SalesOverviewDTO getDashboardOverviewByRange(String fromDate, String toDate, String channel,String brand) {
 
         // Parse the date strings into LocalDateTime
         LocalDateTime startDate = LocalDate.parse(fromDate).atStartOfDay();
@@ -38,12 +37,12 @@ public class SalesDashboardService {
         // just pass the orders list into the same crunching logic.
         // To avoid duplication, refactor like this:
 
-        return crunchOrders(orders, channel);
+        return crunchOrders(orders, channel,brand);
     }
 
     // REFACTOR: Extract the crunching logic from getDashboardOverview() into this private method
 // so both getDashboardOverview() and getDashboardOverviewByRange() share it.
-    private SalesOverviewDTO crunchOrders(List<SalesOrder> orders, String channel) {
+    private SalesOverviewDTO crunchOrders(List<SalesOrder> orders, String channel,String brand) {
 
         SalesOverviewDTO dto = new SalesOverviewDTO();
         Map<String, DailyTrendDTO> trendMap = new HashMap<>();
@@ -59,6 +58,11 @@ public class SalesDashboardService {
                 String orderChannel = order.getChannel() != null ? order.getChannel().toUpperCase() : "UNKNOWN";
                 if (!orderChannel.contains(channel.toUpperCase())) continue;
             }
+            if (brand !=null && !brand.equalsIgnoreCase("ALL") && brand.trim().isEmpty()) {
+                String sku=order.getSku();
+
+            }
+
             if (order.getOrderDate() == null) continue;
 
             BigDecimal price = BigDecimal.ZERO;
@@ -144,13 +148,13 @@ public class SalesDashboardService {
     }
 
     // UPDATE getDashboardOverview() to call crunchOrders() instead of duplicating logic:
-    public SalesOverviewDTO getDashboardOverview(int daysToLookBack, String channel) {
+    public SalesOverviewDTO getDashboardOverview(int daysToLookBack, String channel,String brand    ) {
         LocalDateTime endDate   = LocalDateTime.now();
         LocalDateTime startDate = daysToLookBack > 5000
                 ? LocalDateTime.now().minusYears(20)
                 : endDate.minusDays(daysToLookBack);
         List<SalesOrder> orders = salesOrderRepo.findOrdersByDateRange(startDate, endDate);
-        return crunchOrders(orders, channel);
+        return crunchOrders(orders, channel,brand);
     }
 
 }

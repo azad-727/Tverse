@@ -9,6 +9,7 @@ const PicklistPage = () => {
     
     // Batch ID for Delete Functionality
     const [currentBatchId, setCurrentBatchId] = useState(null);
+    const[brand,setBrand]=useState("Thalasi");
     
     // Options
     const [channel, setChannel] = useState("Flipkart"); 
@@ -29,6 +30,7 @@ const PicklistPage = () => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("channel", channel);
+        formData.append("brand",brand);
         formData.append("saveToDb", saveToDb); // Send boolean to backend
 
         setLoading(true);
@@ -111,7 +113,8 @@ const PicklistPage = () => {
     return (
         <div className="container-fluid p-0">
             
-           {/* MOBILE RESPONSIVE STYLE ENGINE */}
+            
+            {/* MOBILE RESPONSIVE STYLE ENGINE */}
                     <style>{`
             @media print {
                 .btn, .sidebar, .navbar, .drawer-backdrop, .drawer-panel {
@@ -185,6 +188,7 @@ const PicklistPage = () => {
                 }
             }
         `}</style>
+
             {/* Header */}
             {/* ADDED: flex-column flex-md-row and gap-3 for mobile stacking */}
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3 d-print-none">
@@ -219,7 +223,8 @@ const PicklistPage = () => {
                         
                         {/* 1. CHANNEL SELECTION */}
                         <div className="row mb-3 text-start">
-                            <div className="col-md-6 mb-3 mb-md-0">
+
+                            <div className="col-md-4 mb-3 mb-md-0">
                                 <label className="form-label small fw-bold text-muted">Sales Channel</label>
                                 <select className="form-select" value={channel} onChange={(e) => setChannel(e.target.value)}>
                                     <option value="Flipkart">Flipkart</option>
@@ -230,6 +235,16 @@ const PicklistPage = () => {
                                     <option value="B2B">Wholesale / B2B</option>
                                 </select>
                             </div>
+                            <div className="col-12 col-md-4 mb-3 mb-md-0">
+                                <label className="form-label small fw-bold text-muted">Brand</label>
+                                <select className="form-select" value={brand} onChange={(e) => setBrand(e.target.value)}>
+                                    <option value="Thalasi">Thalasi</option>
+                                    <option value="ThreeArrows">Three Arrows</option>
+                                    <option value="Other">Other</option>
+                                    {/* Add any other brands your business uses here */}
+                                </select>
+                            </div>
+
                             
                             {/* 2. SAVE TOGGLE */}
                             <div className="col-md-6">

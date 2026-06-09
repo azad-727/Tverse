@@ -23,9 +23,10 @@ public class OrderController {
 
     @PostMapping("/generate-picklist")
     public ResponseEntity<?> generatePicklist(@RequestParam("file") MultipartFile file,
-                                              @RequestParam(value="channel",defaultValue = "Unknown") String channel) {
+                                              @RequestParam(value="channel", defaultValue = "Unknown")String channel,
+                                              @RequestParam(value="brand", defaultValue = "Unknown") String brand) {
         try {
-            List<PicklistResultDTO> result = picklistService.generatePicklist(file,channel);
+            List<PicklistResultDTO> result = picklistService.generatePicklist(file,channel,brand);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());

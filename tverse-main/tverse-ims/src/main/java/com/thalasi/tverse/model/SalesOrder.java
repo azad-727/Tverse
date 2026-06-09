@@ -36,7 +36,9 @@ public class SalesOrder {
     private String fsn;           // Flipkart
     private String asin;          // Amazon
     private String listingId;     // Flipkart
-    private String imei;          // For Electronics
+    private String imei;
+    private String brand;
+    // For Electronics
 
     // ---- IMAGES -----
     private String imageUrl;
