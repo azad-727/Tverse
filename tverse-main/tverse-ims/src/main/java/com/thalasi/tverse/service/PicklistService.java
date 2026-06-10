@@ -295,7 +295,7 @@ public class PicklistService {
             map.put("customer_name","Buyer name");
         }
         else if(Channel.equals("myntra")){
-            map.put("order_date","Created On");
+            map.put("order_date","Packed On");
             map.put("shipment_id","Store Packet ID");
             map.put("order_item_id","Order_release_id");
             map.put("order_id","Order id");
