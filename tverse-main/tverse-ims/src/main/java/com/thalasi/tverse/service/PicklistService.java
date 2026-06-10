@@ -497,23 +497,29 @@ public class PicklistService {
                         }
                     }
                     if(channel.equalsIgnoreCase("myntra")){
-                        String orderDateRaw = getSafeVal(cols, indices.get("order_date")); // Use getVal for Excel
+                        String orderDateRaw = getSafeVal(cols, indices.get("order_date"));
 
                         if (orderDateRaw == null || orderDateRaw.trim().isEmpty()) {
                             continue; // Skip if no date
                         }
 
-                        // 1. Get today's components
+                        // 1. Isolate the DATE portion, discarding the TIME
+                        // This splits the string by space or 'T' and grabs the first part
+                        String dateOnly = orderDateRaw.split(" ")[0].split("T")[0].trim();
+                        dateOnly = dateOnly.replace("/", "-"); // Standardize slashes to dashes
+
+                        // 2. Get today's components
                         java.time.LocalDate today = java.time.LocalDate.now();
-                        String day = String.format("%02d", today.getDayOfMonth()); // Forces "08" instead of "8"
+                        String day = String.format("%02d", today.getDayOfMonth());
                         String month = String.format("%02d", today.getMonthValue());
                         String year = String.valueOf(today.getYear());
 
-                        // 2. Clean the raw date string (remove extra spaces and make it uniform)
-                        String cleanOrderDate = orderDateRaw.replaceAll("\\s+", " ").trim();
+                        // 3. Build strict acceptable formats
+                        String format1 = year + "-" + month + "-" + day; // e.g. "2026-06-10"
+                        String format2 = day + "-" + month + "-" + year; // e.g. "10-06-2026"
 
-                        // 3. Check if all three components are in the string
-                        if (!cleanOrderDate.contains(year) || !cleanOrderDate.contains(month) || !cleanOrderDate.contains(day)) {
+                        // 4. Exact match check (No more false positives!)
+                        if (!dateOnly.equals(format1) && !dateOnly.equals(format2)) {
                             continue;
                         }
                     }
@@ -626,23 +632,28 @@ public class PicklistService {
                     orderRow.orderDate = LocalDateTime.now();
 
                     if(channel.equalsIgnoreCase("myntra")){
-                        String orderDateRaw = getVal(row, indices.get("order_date"),formatter); // Use getVal for Excel
+                        String orderDateRaw = getVal(row, indices.get("order_date"), formatter);
 
                         if (orderDateRaw == null || orderDateRaw.trim().isEmpty()) {
                             continue; // Skip if no date
                         }
 
-                        // 1. Get today's components
+                        // 1. Isolate the DATE portion, discarding the TIME
+                        String dateOnly = orderDateRaw.split(" ")[0].split("T")[0].trim();
+                        dateOnly = dateOnly.replace("/", "-");
+
+                        // 2. Get today's components
                         java.time.LocalDate today = java.time.LocalDate.now();
-                        String day = String.format("%02d", today.getDayOfMonth()); // Forces "08" instead of "8"
+                        String day = String.format("%02d", today.getDayOfMonth());
                         String month = String.format("%02d", today.getMonthValue());
                         String year = String.valueOf(today.getYear());
 
-                        // 2. Clean the raw date string (remove extra spaces and make it uniform)
-                        String cleanOrderDate = orderDateRaw.replaceAll("\\s+", " ").trim();
+                        // 3. Build strict acceptable formats
+                        String format1 = year + "-" + month + "-" + day; // e.g. "2026-06-10"
+                        String format2 = day + "-" + month + "-" + year; // e.g. "10-06-2026"
 
-                        // 3. Check if all three components are in the string
-                        if (!cleanOrderDate.contains(year) || !cleanOrderDate.contains(month) || !cleanOrderDate.contains(day)) {
+                        // 4. Exact match check
+                        if (!dateOnly.equals(format1) && !dateOnly.equals(format2)) {
                             continue;
                         }
                     }
