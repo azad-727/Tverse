@@ -69,7 +69,8 @@ const ReturnsInward = () => {
             setActiveOrder(null);
             
             try {
-                const res = await apiClient.get(`/api/orders/search?query=${trackingId}`);
+                // Keep the encoded URL to protect against special characters
+                const res = await apiClient.get(`/api/orders/search?query=${encodeURIComponent(trackingId)}`);
                 
                 if (res.data && res.data.length > 0) {
                     // Logic: If only 1 item found, auto-select it. If >1, show selection list.
@@ -104,7 +105,7 @@ const ReturnsInward = () => {
                          // Multiple items found, show the list
                          setFoundOrders(res.data);
                     }
-                }else {
+                } else {
                     // --- SILENT AUTO-PROCESS FOR UNKNOWN ITEMS ---
                     setIsExternal(true);
                     
@@ -197,7 +198,7 @@ const ReturnsInward = () => {
         }
     };
 
-    const processReturnApi = async (payloadData) => {
+  const processReturnApi = async (payloadData) => {
         const payload = {
             ...payloadData,
             staffName: session.staffName,
@@ -207,10 +208,25 @@ const ReturnsInward = () => {
 
         try {
             await apiClient.post("/api/returns/inward", payload);
-            // Optional: You can add a toast notification here instead of an alert so it doesn't block the screen
-            console.log("✅ Processed Successfully"); 
+            
+            // ✅ THE FIX: Instantly wipe the UI state clean!
+            // This drops the card and brings the autoFocus scanner input right back.
+            setActiveOrder(null);
+            setFoundOrders([]);
+            setTrackingInput("");
+            setStep(1);
+            setReturnType("");
+            setSelectedCategory("");
+            setQcResult("");
+            setIsExternal(false);
+            setManualSku("");
+            
         } catch (error) {
             alert("Processing Failed: " + (error.response?.data || error.message));
+            // Reset the scanner input so the operator can keep moving even if one fails
+            setTrackingInput("");
+            setActiveOrder(null);
+            setIsExternal(false);
         }
     };
 
