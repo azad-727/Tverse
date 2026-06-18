@@ -42,7 +42,7 @@ public class ReturnService {
 
 
         if(!request.isExternalOrder()){
-            List<SalesOrder> orders = orderRepo.findOrdersByMultiSearch(request.getTrackingId());
+            List<SalesOrder> orders = orderRepo.findByTrackingId(request.getTrackingId());
 
 
             if (orders.isEmpty()) {
