@@ -33,16 +33,17 @@ public class OrderController {
         }
     }
     @GetMapping("/search")
-    public ResponseEntity<?> scanOrders(@RequestParam String query){
-        try{
-            List<SalesOrder> orders = repo.findByTrackingId(query);
-            if(orders==null||orders.isEmpty())return null;
-            return ResponseEntity.ok(orders);
-
-
-        }catch (Exception e){
-            return ResponseEntity.badRequest().body("Errors"+e.getMessage());
+    public ResponseEntity<List<SalesOrder>> searchOrders(@RequestParam String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
         }
+
+        // Clean the input to remove accidental scanner spaces
+        String cleanQuery = query.trim();
+
+        // Use the new multi-column search so it finds Order IDs, Tracking IDs, and Shipment IDs
+        List<SalesOrder> results = repo.findOrdersByMultiSearch(cleanQuery);
+        return ResponseEntity.ok(results);
     }
 
     @DeleteMapping("/picklist/{picklistId}")

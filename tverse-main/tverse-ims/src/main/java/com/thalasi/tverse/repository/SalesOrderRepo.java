@@ -84,6 +84,7 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByStatusAndDateAfter(@Param("status") String status, @Param("date") LocalDateTime date);
 
     Optional<SalesOrder> findByOrderIdAndSku(String orderId, String sku);
+    List<SalesOrder> findOrdersByMultiSearch(@Param("query") String query);
 
 
 
