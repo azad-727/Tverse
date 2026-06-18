@@ -46,6 +46,9 @@ public class ReturnService {
 
 
             if (orders.isEmpty()) {
+                orders = orderRepo.findByOrderId(request.getTrackingId());
+            }
+            if (orders.isEmpty()){
                 throw new RuntimeException("Order not found for this Tracking ID.");
             }
 
@@ -58,8 +61,10 @@ public class ReturnService {
         else {
             orderIdRef = "EXTERNAL_" + request.getTrackingId();
             // We verify the SKU exists in our Catalog so we can restock it
-            if(variantRepo.findBySku(skuToRestock).isEmpty()) {
-                throw new RuntimeException("Cannot process External Return: SKU not found in Master Catalog");
+            if(!skuToRestock.equalsIgnoreCase("UNKNOWN_ITEM")) {
+                if (variantRepo.findBySku(skuToRestock).isEmpty()) {
+                    throw new RuntimeException("Cannot process External Return: SKU not found in Master Catalog");
+                }
             }
         }
 
@@ -109,7 +114,7 @@ public class ReturnService {
         }
 
         // 5. INVENTORY UPDATE
-        if (shouldRestock) {
+        if (shouldRestock && !skuToRestock.equalsIgnoreCase("UNKNOWN_ITEM")) {
             // Resolve the incoming SKU down to its true internal master SKUs and quantities (handles singles and bundles)
             Map<String, Integer> resolvedComponents = mappingService.resolveSku(skuToRestock, qtyToRestock);
 

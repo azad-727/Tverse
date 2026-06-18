@@ -38,12 +38,38 @@ public class ManufacturingService {
     }
 
     @Transactional
-    public ProductionLot updateLotStatus(Long lotId, String newStatus, Map<String, Integer> rejections) {
+    public ProductionLot updateLotStatus(Long lotId, String newStatus, Map<String, Integer> rejections, Map<String, Integer> cutSizes) {
         ProductionLot lot = lotRepo.findById(lotId)
                 .orElseThrow(() -> new RuntimeException("Lot not found"));
 
+        // --- NEW LOGIC: Finishing the CUTTING stage ---
+        // If the lot is CURRENTLY in Cutting, it means cutting is done and we are moving to the next stage.
+        if ("CUTTING".equalsIgnoreCase(lot.getStatus())) {
+            if (cutSizes == null || cutSizes.isEmpty()) {
+                throw new RuntimeException("Must provide exact cut sizes when finishing the CUTTING stage.");
+            }
+
+            int exactTotalCut = 0;
+            for (Map.Entry<String, Integer> entry : cutSizes.entrySet()) {
+                if (entry.getValue() > 0) {
+                    LotItem item = new LotItem();
+                    item.setSize(entry.getKey());
+                    item.setPlannedQty(entry.getValue());
+                    item.setRejectedQty(0);
+                    item.setProduceQty(entry.getValue());
+                    lot.getSizedBreakdown().add(item);
+
+                    exactTotalCut += entry.getValue();
+                }
+            }
+            // Override the initial estimated quantity with the ACTUAL cut quantity
+            lot.setTotalPlannedQty(exactTotalCut);
+        }
+
+        // Update the status to the next stage (Printing/Stitching)
         lot.setStatus(newStatus);
 
+        // --- EXISTING LOGIC: Handle Rejections for other stages ---
         if (rejections != null && !rejections.isEmpty()) {
             for (LotItem item : lot.getSizedBreakdown()) {
                 if (rejections.containsKey(item.getSize())) {
@@ -55,11 +81,12 @@ public class ManufacturingService {
         }
 
         if ("COMPLETED".equalsIgnoreCase(newStatus)) {
-            // FIXED: Use LocalDateTime and correct variable name
             lot.setCompletedDate(LocalDateTime.now());
         }
+
         return lotRepo.save(lot);
     }
+
 
     @Transactional
     public void cancelLot(Long lotId) {

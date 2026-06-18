@@ -68,19 +68,9 @@ public class ManufacturingController {
             lot.setExpectedDate(request.getExpectedDate().atStartOfDay());
 
             lot.setRemarks(request.getRemarks());
-
+            lot.setTotalPlannedQty(request.getTotalPlannedQty());
             // --- Size Breakdown
-            List<LotItem> items = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : request.getSizedBreakdown().entrySet()) {
-                LotItem item = new LotItem();
-                item.setSize(entry.getKey());
-                item.setPlannedQty(entry.getValue());
-                item.setRejectedQty(0);
-                item.setProduceQty(entry.getValue());
-                items.add(item);
-            }
-            lot.setSizedBreakdown(items);
-
+            lot.setSizedBreakdown(new ArrayList<>());
             return ResponseEntity.ok(service.createLot(lot, request.getFabricId()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Errors:" + e.getMessage());
@@ -95,7 +85,8 @@ public class ManufacturingController {
                     service.updateLotStatus(
                             request.getLotId(),
                             request.getNewStatus(),
-                            request.getRejections()
+                            request.getRejections(),
+                            request.getCutSizes()
                     )
             );
         } catch (Exception e) {
@@ -111,6 +102,40 @@ public class ManufacturingController {
             return ResponseEntity.ok("Lot Deleted Successfully");
         }catch(Exception e){
             return ResponseEntity.badRequest().body("Errors: "+e.getMessage());
+        }
+    }
+    @PostMapping("/fabric/cancel/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
+    public ResponseEntity<String> cancelFabric(@PathVariable Long id){
+        try {
+            Fabric fabric = fabricRepo.findById(id).orElseThrow(() -> new RuntimeException("Fabric not found"));
+            // Set remaining to 0 so it counts as "Empty/Finished"
+            fabric.setRemainingKgs(0);
+            fabricRepo.save(fabric);
+            return ResponseEntity.ok("Fabric marked as finished.");
+        } catch(Exception e){
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+    // --- Safely Delete Fabric Roll ---
+    @DeleteMapping("/fabric/delete/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER')")
+    public ResponseEntity<String> deleteFabric(@PathVariable Long id){
+        try {
+            // Safety Check: Are there any lots using this fabric?
+            List<ProductionLot> linkedLots = productionLotRepo.findAll(); // Optimization: You could write a custom query here, but this works for now.
+            boolean isUsed = linkedLots.stream()
+                    .anyMatch(lot -> lot.getFabric() != null && lot.getFabric().getId().equals(id));
+
+            if (isUsed) {
+                return ResponseEntity.badRequest().body("Cannot delete! This fabric roll is attached to one or more Production Lots.");
+            }
+
+            fabricRepo.deleteById(id);
+            return ResponseEntity.ok("Fabric Roll Deleted Successfully");
+        } catch(Exception e){
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
@@ -152,7 +177,7 @@ public class ManufacturingController {
         private double fabricUsedKgs;
         private LocalDate expectedDate; // Keeps simple date for input
         private String remarks;
-        private Map<String,Integer> sizedBreakdown;
+        private int totalPlannedQty;
     }
 
     @Data
@@ -160,6 +185,7 @@ public class ManufacturingController {
         private Long lotId;
         private String newStatus;
         private Map<String,Integer> rejections;
+        private Map<String,Integer> cutSizes;
     }
 
     // --- Helpers ---

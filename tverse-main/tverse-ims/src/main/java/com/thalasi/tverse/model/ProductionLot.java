@@ -32,6 +32,7 @@ public class ProductionLot {
 
     private String status;
     private String remarks;
+    private int totalPlannedQty;
 
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name="production_lot_id")
