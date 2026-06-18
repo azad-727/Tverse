@@ -8,7 +8,8 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "sales_orders", indexes = {
         @Index(name = "idx_unique_ref", columnList = "uniqueReferenceId", unique = true),
-        @Index(name = "idx_sku", columnList = "sku")
+        @Index(name = "idx_sku", columnList = "sku"),
+        @Index(name = "idx_tracking_id", columnList = "tracking_id")
 })
 @Data
 public class SalesOrder {
