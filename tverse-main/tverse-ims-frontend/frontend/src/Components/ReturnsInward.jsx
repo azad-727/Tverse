@@ -105,38 +105,47 @@ const ReturnsInward = () => {
                          setFoundOrders(res.data);
                     }
                 }else {
-                    // --- THE SAFETY NET ---
-                    // It couldn't find the order. Instead of silently processing it, let's pause and warn you!
-                    const forceExternal = window.confirm(`❌ NOT FOUND IN DATABASE!\nBarcode scanned: "${trackingId}"\n\nDo you want to force this as an UNKNOWN_ITEM?`);
+                    // --- SILENT AUTO-PROCESS FOR UNKNOWN ITEMS ---
+                    setIsExternal(true);
                     
-                    if (forceExternal) {
-                        setIsExternal(true);
-                        setActiveOrder({
-                            productName: "EXTERNAL / MANUAL RETURN",
-                            sku: "UNKNOWN_ITEM",
-                            orderId: "N/A",
-                            channel: "EXTERNAL",
-                            quantity: 1,
-                            imageUrl: null
-                        });
+                    // Set up the dummy order for the UI to display briefly
+                    const dummyOrder = {
+                        productName: "EXTERNAL / UNKNOWN RETURN",
+                        sku: "UNKNOWN_ITEM",
+                        orderId: "N/A",
+                        channel: "EXTERNAL",
+                        quantity: 1,
+                        imageUrl: null
+                    };
+                    setActiveOrder(dummyOrder);
 
-                        if (session.mode === 'RTO_FAST') {
-                            await processReturnApi({
-                                trackingId: trackingId,
-                                sku: "UNKNOWN_ITEM", 
-                                quantity: 1,
-                                isExternalOrder: true,
-                                returnType: 'COURIER_RETURN',
-                                returnMainReason: 'Unknown Order',
-                                returnSubReason: 'Not Found in DB',
-                                isGoodCondition: true
-                            });
-                        } else {
-                            setStep(1);
-                        }
+                    if (session.mode === 'RTO_FAST') {
+                        // ⚡ SILENT AUTO-PROCESS FOR FAST-TRACK RTO ⚡
+                        // No popups. No keyboard. Just instantly save it.
+                        await processReturnApi({
+                            trackingId: trackingId,
+                            sku: "UNKNOWN_ITEM", 
+                            quantity: 1,
+                            isExternalOrder: true,
+                            returnType: 'COURIER_RETURN',
+                            returnMainReason: 'Unknown Order',
+                            returnSubReason: 'Not Found in DB',
+                            isGoodCondition: true
+                        });
                     } else {
-                        // You clicked cancel. Just clear the input so you can scan again.
-                        setTrackingInput("");
+                        // 🔍 MANUAL QC FLOW FOR CUSTOMER RETURNS 🔍
+                        // If they are in Customer Return mode, they STILL need a popup 
+                        // to warn them they are about to QC an unknown item.
+                        const forceExternal = window.confirm(`❌ NOT FOUND IN DATABASE!\nBarcode scanned: "${trackingId}"\n\nDo you want to manually QC this as an UNKNOWN_ITEM?`);
+                        
+                        if (forceExternal) {
+                            setStep(1); // Proceed to let them select the reason (Damaged, Fit, etc.)
+                        } else {
+                            // Cancelled. Reset the screen.
+                            setActiveOrder(null);
+                            setTrackingInput("");
+                            setIsExternal(false);
+                        }
                     }
                 }
             } catch (err) { 
@@ -146,7 +155,6 @@ const ReturnsInward = () => {
             }
         }
     };
-
     const handleProcess = async () => {
         const isGood = returnType === 'COURIER_RETURN' ? true : (qcResult === 'PASS');
         
