@@ -7,7 +7,7 @@ const FabricManager = () => {
     const [newFabric, setNewFabric] = useState({ fabricName: "", color: "", vendorName: "", totalKgs: "", costPerKgs: "" });
     const [searchQuery, setSearchQuery] = useState("");
     
-    // ✅ NEW: State to toggle empty/finished rolls
+    // State to toggle empty/finished rolls
     const [showEmpty, setShowEmpty] = useState(false);
 
     useEffect(() => { fetchFabrics(); }, []);
@@ -29,7 +29,28 @@ const FabricManager = () => {
         } catch (e) { alert("Error adding fabric"); }
     };
 
-  
+    // ✅ NEW: Handle Delete
+    const handleDelete = async (id) => {
+        if (!confirm("⚠️ DANGER: Permanently delete this fabric roll? This cannot be undone.")) return;
+        try {
+            await apiClient.delete(`/api/manufacturing/fabric/delete/${id}`);
+            fetchFabrics();
+        } catch (e) { 
+            // The backend sends a specific error message if it's attached to a lot
+            alert(e.response?.data || "Delete failed."); 
+        }
+    };
+
+    // ✅ NEW: Handle Cancel/Finish
+    const handleCancel = async (id) => {
+        if (!confirm("Mark this roll as completely finished? Remaining weight will be set to 0.")) return;
+        try {
+            await apiClient.post(`/api/manufacturing/fabric/cancel/${id}`);
+            fetchFabrics();
+        } catch (e) { 
+            alert("Failed to mark as finished."); 
+        }
+    };
 
     const getStockColor = (remaining, total) => {
         const pct = (remaining / total) * 100;
@@ -38,16 +59,13 @@ const FabricManager = () => {
         return 'bg-danger';
     };
 
-    // ✅ UPDATED: Smart Filtering Logic
+    // Smart Filtering Logic
     const filteredFabrics = fabrics.filter(f => {
-        // 1. Search Filter
         const matchesSearch = f.fabricName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                               f.color.toLowerCase().includes(searchQuery.toLowerCase()) ||
                               f.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
         
-        // 2. Hide Empty Filter (Auto-hides rolls with 0 remaining Kgs unless toggled)
         const matchesStock = showEmpty ? true : f.remainingKgs > 0;
-
         return matchesSearch && matchesStock;
     });
 
@@ -59,9 +77,6 @@ const FabricManager = () => {
                     transition: transform 0.2s;
                     border: 1px solid #e9ecef;
                     background: #ffffff;
-                }
-                .tverse-fabric-card:active {
-                    transform: scale(0.98);
                 }
                 .stock-indicator-bg {
                     height: 8px;
@@ -98,8 +113,6 @@ const FabricManager = () => {
                 </div>
                 
                 <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto align-items-md-center">
-                    
-                    {/* ✅ NEW: Toggle Switch for Empty Rolls */}
                     <div className="form-check form-switch me-md-2 mt-2 mt-sm-0 align-self-start align-self-sm-center">
                         <input className="form-check-input" type="checkbox" role="switch" id="showEmptySwitch" checked={showEmpty} onChange={() => setShowEmpty(!showEmpty)} />
                         <label className="form-check-label small fw-bold text-muted" htmlFor="showEmptySwitch">Show Empty</label>
@@ -172,7 +185,6 @@ const FabricManager = () => {
                         
                         return (
                             <div className="col-12 col-sm-6 col-xl-4" key={f.id}>
-                                {/* ✅ NEW: Greyscale styling for empty rolls */}
                                 <div className={`card tverse-fabric-card p-3 p-md-4 h-100 rounded-4 shadow-sm ${isEmpty ? 'empty-roll-card' : ''}`}>
                                     
                                     <div className="d-flex justify-content-between align-items-start mb-3">
@@ -180,9 +192,22 @@ const FabricManager = () => {
                                             <h5 className="fw-bold text-dark mb-1">{f.fabricName} {isEmpty && "(Finished)"}</h5>
                                             <div className="text-muted small"><i className="bi bi-shop me-1"></i> {f.vendorName}</div>
                                         </div>
-                                        <div className="text-end">
-                                            <span className="badge bg-light text-dark border px-2 py-1 shadow-sm d-block mb-2">{f.color}</span>
-                                        
+                                        <div className="d-flex flex-column align-items-end gap-2">
+                                            {/* ✅ NEW: Dropdown Menu for Delete/Cancel Actions */}
+                                            <div className="dropdown">
+                                                <button className="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i className="bi bi-three-dots-vertical"></i>
+                                                </button>
+                                                <ul className="dropdown-menu dropdown-menu-end shadow border-0">
+                                                    {!isEmpty && (
+                                                        <li><button className="dropdown-item small" onClick={() => handleCancel(f.id)}><i className="bi bi-check2-all me-2"></i> Mark Finished</button></li>
+                                                    )}
+                                                    <li><hr className="dropdown-divider" /></li>
+                                                    <li><button className="dropdown-item small text-danger fw-bold" onClick={() => handleDelete(f.id)}><i className="bi bi-trash me-2"></i> Delete Record</button></li>
+                                                </ul>
+                                            </div>
+
+                                            <span className="badge bg-light text-dark border px-2 py-1 shadow-sm d-block">{f.color}</span>
                                         </div>
                                     </div>
                                     

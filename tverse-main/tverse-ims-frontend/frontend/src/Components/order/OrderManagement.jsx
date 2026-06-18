@@ -487,6 +487,7 @@ const OrderManagement = () => {
                     <select className="compact-select" value={filters.channel} onChange={(e) => setFilters({...filters, channel: e.target.value})}>
                         <option value="">Channel of Sale</option>
                         <option value="Flipkart">Flipkart</option>
+                        <option value="Myntra">Myntra</option>
                         <option value="Amazon">Amazon</option>
                         <option value="Meesho">Meesho</option>
                     </select>

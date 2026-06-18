@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../apiClient';
+import apiClient from '../apiClient'; // ✅ Using production API client
 
 const LotManager = () => {
     // --- STATE ---
     const [lots, setLots] = useState([]);
     const [fabrics, setFabrics] = useState([]);
+    const [availableSkus, setAvailableSkus] = useState([]); // ✅ NEW: For SKU Autocomplete
     
     // UI Toggles
     const [showCreate, setShowCreate] = useState(false);
@@ -30,14 +31,20 @@ const LotManager = () => {
     });
 
     // Forms
-    const [newLot, setNewLot] = useState({ skuCode: "", fabricId: "", fabricUsedKgs: "", expectedDate: "", remarks: "" });
-    const [sizeInput, setSizeInput] = useState({ S: 0, M: 0, L: 0, XL: 0, XXL: 0 });
+    // ✅ NEW: Added totalPlannedQty, removed sizeInput
+    const [newLot, setNewLot] = useState({ skuCode: "", fabricId: "", fabricUsedKgs: "", expectedDate: "", remarks: "", totalPlannedQty: "" });
+    const [cutSizes, setCutSizes] = useState({ S: 0, M: 0, L: 0, XL: 0, XXL: 0 }); // ✅ NEW: For Cutting phase
 
-    const STATUS_FLOW = ["NEW", "CUTTING", "STITCHING", "PRINTING", "FINISHING", "PACKING", "COMPLETED"];
+    // ✅ FIXED WORKFLOW ORDER
+    const STATUS_FLOW = ["NEW", "CUTTING", "PRINTING", "STITCHING", "FINISHING", "PACKING", "COMPLETED"];
+    
+    useEffect(() => { 
+        fetchLots(); 
+        fetchFabrics(); 
+        fetchSkus(); 
+    }, []);
 
-    useEffect(() => { fetchLots(); fetchFabrics(); }, []);
-
-    // --- API CALLS (Production Ready) ---
+    // --- API CALLS ---
     const fetchLots = async () => { 
         const params = new URLSearchParams(filters);
         for (const [key, value] of params.entries()) { if (!value) params.delete(key); }
@@ -52,15 +59,29 @@ const LotManager = () => {
         } catch(e) { console.error(e); }
     };
     
-    const fetchFabrics = async () => {
+    const fetchFabrics = async () => { 
         try {
             const res = await apiClient.get("/api/manufacturing/fabrics"); 
             setFabrics(res.data);
         } catch(e) { console.error(e); }
     };
 
+    const fetchSkus = async () => {
+        try {
+            const res = await apiClient.get("/api/catalog/list");
+            setAvailableSkus(res.data.map(item => item.sku));
+        } catch (e) { 
+            console.error("Failed to load SKUs for autocomplete", e); 
+        }
+    };
+
     // --- HELPERS ---
-    const calculateTotalQty = (lot) => (lot.sizedBreakdown || lot.sizeBreakdown || []).reduce((sum, item) => sum + item.plannedQty, 0);
+    const calculateTotalQty = (lot) => {
+        // ✅ NEW: Show estimate for NEW lots, exact sizes for everything else
+        if (lot.status === 'NEW') return lot.totalPlannedQty || 0;
+        return (lot.sizedBreakdown || lot.sizeBreakdown || []).reduce((sum, item) => sum + item.plannedQty, 0);
+    };
+
     const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString() : "N/A";
     
     const getStatusColor = (status) => {
@@ -70,25 +91,48 @@ const LotManager = () => {
         if(status === 'FINISHING') return 'bg-success text-white';
         if(status === 'COMPLETED') return 'bg-dark text-white';
         if(status === 'CANCELLED') return 'bg-secondary text-white'; 
-        return 'bg-primary text-white'; // Fallback
+        return 'bg-primary text-white'; 
     };
 
     // --- ACTIONS ---
     const handleCreateLot = async () => {
-        const sizeMap = {};
-        Object.keys(sizeInput).forEach(k => { if(sizeInput[k] > 0) sizeMap[k] = parseInt(sizeInput[k]); });
+        if (!newLot.totalPlannedQty || newLot.totalPlannedQty <= 0) return alert("Please enter the total planned quantity.");
         try {
-            await apiClient.post("/api/manufacturing/lot/create", { ...newLot, sizedBreakdown: sizeMap }); 
-            alert("✅ Production Order Created"); setShowCreate(false); fetchLots();
+            await apiClient.post("/api/manufacturing/lot/create", newLot); 
+            alert("✅ Production Order Created"); 
+            setShowCreate(false); 
+            fetchLots();
+            setNewLot({ skuCode: "", fabricId: "", fabricUsedKgs: "", expectedDate: "", remarks: "", totalPlannedQty: "" });
         } catch (e) { alert("Failed: " + e.response?.data); }
     };
 
     const handleStageMove = async () => {
-        try {
-            await apiClient.post("/api/manufacturing/lot/status", { 
-                lotId: movingLot.id, newStatus: nextStatus, rejections: rejections
+        const payload = {
+            lotId: movingLot.id, 
+            newStatus: nextStatus, 
+            rejections: rejections
+        };
+
+        // ✅ FIXED: Check movingLot.status to attach sizes when leaving the Cutting phase
+        if (movingLot.status === "CUTTING") {
+            const sizeMap = {};
+            let totalCut = 0;
+            Object.keys(cutSizes).forEach(k => { 
+                if(cutSizes[k] > 0) {
+                    sizeMap[k] = parseInt(cutSizes[k]);
+                    totalCut += sizeMap[k];
+                }
             });
-            setMovingLot(null); fetchLots(); setSelectedLot(null); 
+            if (totalCut === 0) return alert("You must enter the exact cut sizes before moving out of the Cutting stage.");
+            payload.cutSizes = sizeMap;
+        }
+
+        try {
+            await apiClient.post("/api/manufacturing/lot/status", payload);
+            setMovingLot(null); 
+            fetchLots(); 
+            setSelectedLot(null); 
+            setCutSizes({ S: 0, M: 0, L: 0, XL: 0, XXL: 0 }); // Reset
         } catch (e) { alert("Update Failed"); }
     };
 
@@ -118,7 +162,6 @@ const LotManager = () => {
             
             {/* INJECTED MOBILE-FIRST CSS ENGINE */}
             <style>{`
-                /* Mobile Card Styling */
                 .tverse-lot-card {
                     transition: transform 0.2s;
                     border: 1px solid #e9ecef;
@@ -131,7 +174,6 @@ const LotManager = () => {
                     letter-spacing: 0.5px;
                     padding: 0.35em 0.65em;
                 }
-                /* Drawer Fix for Mobile */
                 .drawer-panel {
                     width: 100% !important;
                     max-width: 400px;
@@ -141,7 +183,6 @@ const LotManager = () => {
                 .drawer-panel.open {
                     right: 0;
                 }
-                /* Fat-finger buttons for touch screens */
                 @media (max-width: 768px) {
                     .mobile-action-btn {
                         padding: 0.6rem 1rem;
@@ -215,7 +256,7 @@ const LotManager = () => {
             ) : (
                 <>
                     {/* 1. DESKTOP VIEW: Standard Table (Hidden on Mobile) */}
-                    <div className="pro-table-container d-none d-lg-block bg-white rounded-3 shadow-sm border overflow-hidden">
+                    <div className="pro-table-container d-none d-lg-block bg-white rounded-3 shadow-sm border overflow-visible">
                         <table className="table table-hover align-middle mb-0">
                             <thead className="table-light">
                                 <tr>
@@ -322,7 +363,7 @@ const LotManager = () => {
 
                                         {/* Card Footer Actions */}
                                         <div className="card-footer bg-transparent border-top p-2 d-flex gap-2">
-                                            <button className="btn btn-light border flex-grow-1 mobile-action-btn" onClick={() => setSelectedLot(lot)}>
+                                            <button className="btn btn-light border mobile-action-btn flex-grow-1" onClick={() => setSelectedLot(lot)}>
                                                 <i className="bi bi-eye"></i>
                                             </button>
                                             
@@ -339,6 +380,18 @@ const LotManager = () => {
                                                     Next Stage <i className="bi bi-arrow-right"></i>
                                                 </button>
                                             )}
+
+                                            <div className="btn-group">
+                                                <button type="button" className="btn btn-light border dropdown-toggle dropdown-toggle-split mobile-action-btn" data-bs-toggle="dropdown" aria-expanded="false"></button>
+                                                <ul className="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                                    <li><button className="dropdown-item small" onClick={() => { setEditingLot(lot); setShowEdit(true); }}><i className="bi bi-pencil me-2"></i> Edit Notes</button></li>
+                                                    <li><hr className="dropdown-divider" /></li>
+                                                    {lot.status !== 'CANCELLED' && (
+                                                        <li><button className="dropdown-item small text-danger" onClick={() => handleCancelLot(lot.id)}><i className="bi bi-x-circle me-2"></i> Cancel Lot</button></li>
+                                                    )}
+                                                    <li><button className="dropdown-item small text-danger fw-bold" onClick={() => handleDeleteLot(lot.id)}><i className="bi bi-trash me-2"></i> Delete Data</button></li>
+                                                </ul>
+                                            </div>
                                         </div>
 
                                     </div>
@@ -351,7 +404,6 @@ const LotManager = () => {
 
             {/* --- MODALS & DRAWERS --- */}
             
-            {/* Drawer Fix: Made max-width 400px so it fits mobile screens */}
             <div className={`drawer-backdrop ${selectedLot ? 'open' : ''}`} onClick={() => setSelectedLot(null)} style={{backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: selectedLot ? 'block' : 'none'}}></div>
             
             <div className={`drawer-panel bg-white shadow-lg h-100 position-fixed top-0 ${selectedLot ? 'open' : ''}`} style={{zIndex: 1050}}>
@@ -443,13 +495,34 @@ const LotManager = () => {
                                 <div className="row g-4">
                                     <div className="col-12 col-md-6">
                                         <label className="form-label small fw-bold text-muted">SKU Code</label>
-                                        <input className="form-control form-control-lg fs-6" placeholder="e.g. TTS-HOODIE-BLK" onChange={e => setNewLot({...newLot, skuCode: e.target.value})} />
+                                        {/* ✅ NEW: Autocomplete Datalist */}
+                                        <input 
+                                            className="form-control form-control-lg fs-6" 
+                                            placeholder="e.g. TTS-HOODIE-BLK" 
+                                            value={newLot.skuCode}
+                                            onChange={e => setNewLot({...newLot, skuCode: e.target.value})} 
+                                            list="sku-suggestions" 
+                                            autoComplete="off"
+                                        />
+                                        <datalist id="sku-suggestions">
+                                            {availableSkus.map((sku, idx) => (
+                                                <option key={idx} value={sku} />
+                                            ))}
+                                        </datalist>
                                     </div>
                                     <div className="col-12 col-md-6">
                                         <label className="form-label small fw-bold text-muted">Select Raw Material</label>
                                         <select className="form-select form-select-lg fs-6" onChange={e => setNewLot({...newLot, fabricId: e.target.value})}>
                                             <option value="">Choose Fabric Roll...</option>
-                                            {fabrics.map(f => <option key={f.id} value={f.id}>{f.fabricName} (Avl: {f.remainingKgs} kgs)</option>)}
+                                            {/* ✅ NEW: Filter out 0kg rolls */}
+                                            {fabrics
+                                                .filter(f => f.remainingKgs > 0)
+                                                .map(f => (
+                                                    <option key={f.id} value={f.id}>
+                                                        {f.fabricName} (Avl: {f.remainingKgs} kgs)
+                                                    </option>
+                                                ))
+                                            }
                                         </select>
                                     </div>
                                     <div className="col-6">
@@ -460,19 +533,16 @@ const LotManager = () => {
                                         <label className="form-label small fw-bold text-muted">Expected Deadline</label>
                                         <input type="date" className="form-control form-control-lg fs-6" onChange={e => setNewLot({...newLot, expectedDate: e.target.value})} />
                                     </div>
+                                    
+                                    {/* ✅ NEW: Replaced Size Matrix with Total Estimate */}
                                     <div className="col-12">
                                         <div className="p-3 bg-light border rounded-3">
-                                            <h6 className="fw-bold small mb-3 text-muted">Size Breakup Matrix</h6>
-                                            <div className="d-flex flex-wrap gap-2 justify-content-between">
-                                                {['S','M','L','XL','2XL'].map(sz => (
-                                                    <div key={sz} className="text-center" style={{flex: '1 1 18%'}}>
-                                                        <label className="small fw-bold d-block mb-1">{sz}</label>
-                                                        <input type="number" inputMode="numeric" pattern="[0-9]*" className="form-control text-center py-2" placeholder="0" onChange={e => setSizeInput({...sizeInput, [sz]: e.target.value})} />
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            <label className="form-label fw-bold text-dark mb-1">Estimated Total Quantity (Pieces)</label>
+                                            <p className="small text-muted mb-2">Exact sizes will be entered after the cutting phase is complete.</p>
+                                            <input type="number" className="form-control form-control-lg fs-6 w-50" placeholder="e.g. 500" onChange={e => setNewLot({...newLot, totalPlannedQty: e.target.value})} />
                                         </div>
                                     </div>
+                                    
                                     <div className="col-12">
                                         <label className="form-label small fw-bold text-muted">Remarks</label>
                                         <textarea className="form-control" rows="2" onChange={e => setNewLot({...newLot, remarks: e.target.value})}></textarea>
@@ -497,41 +567,65 @@ const LotManager = () => {
                                 <h5 className="modal-title fw-bold m-0">Promote to {nextStatus}</h5>
                                 <button type="button" className="btn-close btn-close-white" onClick={() => setMovingLot(null)}></button>
                             </div>
+                            
+                            {/* ✅ FIXED: Check movingLot.status === 'CUTTING' instead of nextStatus */}
                             <div className="modal-body p-4 bg-white">
-                                <p className="text-muted small mb-4">Please record any QC failures or damages detected during the <strong>{movingLot.status}</strong> stage.</p>
-                                <div className="border rounded-3 overflow-hidden">
-                                    <table className="table table-borderless table-striped align-middle mb-0">
-                                        <thead className="table-light border-bottom">
-                                            <tr>
-                                                <th className="py-2 px-3 small">Size</th>
-                                                <th className="py-2 px-3 small">Plan</th>
-                                                <th className="py-2 px-3 small text-danger text-end">QC Rejections</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(movingLot.sizedBreakdown || movingLot.sizeBreakdown || []).map(item => (
-                                                <tr key={item.id}>
-                                                    <td className="fw-bold px-3">{item.size}</td>
-                                                    <td className="px-3">{item.plannedQty}</td>
-                                                    <td className="px-3 text-end">
-                                                        <input 
-                                                            type="number" 
-                                                            inputMode="numeric" 
-                                                            pattern="[0-9]*"
-                                                            className="form-control form-control-sm text-danger fw-bold d-inline-block text-center" 
-                                                            style={{width: '70px', padding: '0.4rem'}}
-                                                            placeholder="0"
-                                                            onChange={(e) => setRejections({
-                                                                ...rejections, 
-                                                                [item.size]: parseInt(e.target.value) || 0
-                                                            })}
-                                                        />
-                                                    </td>
-                                                </tr>
+                                {movingLot.status === "CUTTING" ? (
+                                    <>
+                                        <p className="text-dark small mb-3">Cutting is complete. Please enter the <strong>exact number of pieces</strong> successfully cut for each size before moving to {nextStatus}.</p>
+                                        <div className="d-flex flex-wrap gap-2 justify-content-between p-3 bg-light border rounded-3">
+                                            {['S','M','L','XL','2XL'].map(sz => (
+                                                <div key={sz} className="text-center" style={{flex: '1 1 18%'}}>
+                                                    <label className="small fw-bold d-block mb-1">{sz}</label>
+                                                    <input 
+                                                        type="number" 
+                                                        inputMode="numeric" 
+                                                        className="form-control text-center py-2 border-primary" 
+                                                        placeholder="0" 
+                                                        value={cutSizes[sz] || ''}
+                                                        onChange={e => setCutSizes({...cutSizes, [sz]: e.target.value})} 
+                                                    />
+                                                </div>
                                             ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-muted small mb-4">Please record any QC failures or damages detected during the <strong>{movingLot.status}</strong> stage.</p>
+                                        <div className="border rounded-3 overflow-hidden">
+                                            <table className="table table-borderless table-striped align-middle mb-0">
+                                                <thead className="table-light border-bottom">
+                                                    <tr>
+                                                        <th className="py-2 px-3 small">Size</th>
+                                                        <th className="py-2 px-3 small">Plan</th>
+                                                        <th className="py-2 px-3 small text-danger text-end">QC Rejections</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {(movingLot.sizedBreakdown || movingLot.sizeBreakdown || []).map(item => (
+                                                        <tr key={item.id}>
+                                                            <td className="fw-bold px-3">{item.size}</td>
+                                                            <td className="px-3">{item.plannedQty}</td>
+                                                            <td className="px-3 text-end">
+                                                                <input 
+                                                                    type="number" 
+                                                                    inputMode="numeric" 
+                                                                    className="form-control form-control-sm text-danger fw-bold d-inline-block text-center" 
+                                                                    style={{width: '70px', padding: '0.4rem'}}
+                                                                    placeholder="0"
+                                                                    onChange={(e) => setRejections({
+                                                                        ...rejections, 
+                                                                        [item.size]: parseInt(e.target.value) || 0
+                                                                    })}
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             <div className="modal-footer border-top-0 bg-light p-3 d-flex flex-nowrap gap-2">
                                 <button className="btn btn-outline-secondary flex-grow-1 py-2" onClick={() => setMovingLot(null)}>Cancel</button>

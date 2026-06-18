@@ -88,6 +88,8 @@ const FinanceDashboard = () => {
                                     onChange={(e) => setChannel(e.target.value)}
                                 >
                                     <option value="FLIPKART">Flipkart</option>
+                                    <option value="AMAZON">Amazon</option>
+                                    <option value="WEBSITE">WebSite</option>
                                     <option value="MEESHO">Meesho</option>
                                     <option value="MYNTRA">Myntra</option>
                                 </select>

@@ -10,7 +10,8 @@ const ReturnsInward = () => {
     const [session, setSession] = useState({
         staffName: "",
         channel: "",
-        courierPartner: ""
+        courierPartner: "",
+        mode: "RTO_FAST"
     });
     const [options, setOptions] = useState({ staff: [], channel: [], courier: [] });
 
@@ -60,40 +61,89 @@ const ReturnsInward = () => {
     // --- HANDLERS (Scan & Process) ---
     const handleScan = async (e) => {
         if (e.key === 'Enter') {
+            const trackingId = trackingInput.trim();
+            if (!trackingId) return;
+
             setLoading(true);
             setFoundOrders([]);
             setActiveOrder(null);
-            setIsExternal(false);
-            setManualSku("");
-
+            
             try {
-                const res = await apiClient.get(`/api/orders/search?query=${trackingInput}`);
+                const res = await apiClient.get(`/api/orders/search?query=${trackingId}`);
                 
                 if (res.data && res.data.length > 0) {
-                    setFoundOrders(res.data);
-                    
                     // Logic: If only 1 item found, auto-select it. If >1, show selection list.
                     if (res.data.length === 1) {
-                        setActiveOrder(res.data[0]);
-                        setStep(1);
+                        const order = res.data[0];
+                        setActiveOrder(order);
+                        
+                        // --- FAST TRACK RTO FLOW ---
+                        if (session.mode === 'RTO_FAST') {
+                            // Show the details briefly, then auto-process
+                            setReturnType('COURIER_RETURN'); 
+                            
+                            // Auto-fire the API using the data we just fetched
+                            await processReturnApi({
+                                trackingId: order.trackingId || trackingId,
+                                sku: order.sku,
+                                quantity: 1,
+                                isExternalOrder: false,
+                                returnType: 'COURIER_RETURN',
+                                returnMainReason: 'RTO',
+                                returnSubReason: 'Auto',
+                                isGoodCondition: true
+                            });
+                            
+                            // We don't set step(1) here because we already processed it.
+                            // The processReturnApi will reset the UI for the next scan.
+                        } else {
+                            // --- MANUAL QC FLOW ---
+                            setStep(1);
+                        }
+                    } else {
+                         // Multiple items found, show the list
+                         setFoundOrders(res.data);
                     }
-                } else {
-                    // Not Found -> Prompt for External
-                    if(confirm("❌ Order not found in Database.\n\nDo you want to process this as an EXTERNAL RETURN?")) {
+                }else {
+                    // --- THE SAFETY NET ---
+                    // It couldn't find the order. Instead of silently processing it, let's pause and warn you!
+                    const forceExternal = window.confirm(`❌ NOT FOUND IN DATABASE!\nBarcode scanned: "${trackingId}"\n\nDo you want to force this as an UNKNOWN_ITEM?`);
+                    
+                    if (forceExternal) {
                         setIsExternal(true);
                         setActiveOrder({
                             productName: "EXTERNAL / MANUAL RETURN",
-                            sku: "UNKNOWN",
+                            sku: "UNKNOWN_ITEM",
                             orderId: "N/A",
                             channel: "EXTERNAL",
                             quantity: 1,
                             imageUrl: null
                         });
-                        setStep(1);
+
+                        if (session.mode === 'RTO_FAST') {
+                            await processReturnApi({
+                                trackingId: trackingId,
+                                sku: "UNKNOWN_ITEM", 
+                                quantity: 1,
+                                isExternalOrder: true,
+                                returnType: 'COURIER_RETURN',
+                                returnMainReason: 'Unknown Order',
+                                returnSubReason: 'Not Found in DB',
+                                isGoodCondition: true
+                            });
+                        } else {
+                            setStep(1);
+                        }
+                    } else {
+                        // You clicked cancel. Just clear the input so you can scan again.
+                        setTrackingInput("");
                     }
                 }
-            } catch (err) { alert("Error searching order"); } 
-            finally { setLoading(false); }
+            } catch (err) { 
+                alert("Error searching order"); 
+            } finally { 
+                setLoading(false);
+            }
         }
     };
 
@@ -134,6 +184,23 @@ const ReturnsInward = () => {
             setQcResult("");
             setIsExternal(false);
             setManualSku("");
+        } catch (error) {
+            alert("Processing Failed: " + (error.response?.data || error.message));
+        }
+    };
+
+    const processReturnApi = async (payloadData) => {
+        const payload = {
+            ...payloadData,
+            staffName: session.staffName,
+            returnChannel: session.channel,
+            courierPartner: session.courierPartner
+        };
+
+        try {
+            await apiClient.post("/api/returns/inward", payload);
+            // Optional: You can add a toast notification here instead of an alert so it doesn't block the screen
+            console.log("✅ Processed Successfully"); 
         } catch (error) {
             alert("Processing Failed: " + (error.response?.data || error.message));
         }
@@ -195,6 +262,13 @@ const ReturnsInward = () => {
                             <select className="form-select bg-dark text-white border-secondary" value={session.courierPartner} onChange={e => setSession({...session, courierPartner: e.target.value})}>
                                 <option value="">Select...</option>
                                 {options.courier.map(o => <option key={o.id} value={o.value}>{o.value}</option>)}
+                            </select>
+                        </div>
+                        <div className="mb-4">
+                            <label className="fw-bold text-warning">Scanning Mode</label>
+                            <select className="form-select bg-dark text-white border-warning" value={session.mode} onChange={e => setSession({...session, mode: e.target.value})}>
+                                <option value="RTO_FAST">⚡ RTO Fast-Track (Scan & Go)</option>
+                                <option value="MANUAL_QC">🔍 Customer Return (Requires QC)</option>
                             </select>
                         </div>
                         <button className="btn btn-success w-100 py-3 fw-bold" onClick={startSession}>START RETURNS</button>

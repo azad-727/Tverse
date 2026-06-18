@@ -208,6 +208,7 @@ const ReportHub = () => {
                                                     <option value="COCOBLU">Amazon - Cocoblu</option>
                                                     <option value="FLIPKART">Flipkart</option>
                                                     <option value="MEESHO">Meesho</option>
+                                                    <option value="MYNTRA">Myntra</option>
                                                 </select>
                                             </div>
                                         )}

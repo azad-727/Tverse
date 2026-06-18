@@ -127,7 +127,7 @@ const ChannelMapping = () => {
                             <div className="mb-3">
                                 <label className="form-label small fw-bold">Channel</label>
                                 <select className="form-select" value={newAlias.channel} onChange={e=>setNewAlias({...newAlias, channel: e.target.value})}>
-                                    <option>Flipkart</option><option>Amazon</option><option>Meesho</option>
+                                    <option>Flipkart</option><option>Amazon</option><option>Meesho</option><option>Myntra</option><option>Website</option><option>Other</option>
                                 </select>
                             </div>
                             <div className="mb-3">
