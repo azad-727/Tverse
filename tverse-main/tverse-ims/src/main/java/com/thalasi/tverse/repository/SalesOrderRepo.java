@@ -88,7 +88,8 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
             "OR LOWER(o.orderId) = LOWER(:query) " +
             "OR LOWER(o.shipmentId) = LOWER(:query)")
     List<SalesOrder> findOrdersByMultiSearch(@Param("query") String query);
-
+    @Query("SELECT s.uniqueReferenceId FROM SalesOrder s WHERE s.uniqueReferenceId IN :ids")
+    List<String> findExistingUniqueReferenceIds(@Param("ids") List<String> ids);
 
 
 }

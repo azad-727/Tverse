@@ -154,35 +154,45 @@ public class PicklistService {
     }
 
     // --- 5. SAVE ORDERS TO HISTORY (The Logic Engine) ---
-    private void saveOrdersToHistory(List<OrderRow> rows, String channel,String batchId) {
+    // --- 5. SAVE ORDERS TO HISTORY (Batched — P1 fix) ---
+    private void saveOrdersToHistory(List<OrderRow> rows, String channel, String batchId) {
         int savedCount = 0;
 
+        // STEP 1: Compute unique keys for every row first — no DB calls yet
+        List<String> uniqueKeys = new ArrayList<>(rows.size());
         for (OrderRow row : rows) {
+            String uniqueKey;
+            if (channel.equalsIgnoreCase("Flipkart")) {
+                uniqueKey = (row.orderItemId != null && !row.orderItemId.isEmpty())
+                        ? row.orderItemId
+                        : row.orderId + "_" + row.sku;
+            } else {
+                uniqueKey = row.orderId + "_" + row.sku;
+            }
+            uniqueKeys.add(uniqueKey);
+        }
+
+        // STEP 2: ONE query for every already-imported key (replaces N existsBy... calls)
+        Set<String> existingKeys = new HashSet<>(orderRepo.findExistingUniqueReferenceIds(uniqueKeys));
+
+        // STEP 3: ONE query for every variant needed (replaces 2×N findBySku calls)
+        List<String> allSkus = rows.stream().map(r -> r.sku).distinct().collect(Collectors.toList());
+        Map<String, productVariant> variantMap = variantRepo.findBySkuIn(allSkus).stream()
+                .collect(Collectors.toMap(productVariant::getSku, v -> v, (a, b) -> a));
+
+        // STEP 4: Build entities + apply stock changes in memory — zero DB calls in this loop
+        List<SalesOrder> ordersToSave = new ArrayList<>();
+        Set<productVariant> variantsToUpdate = new HashSet<>();
+
+        for (int i = 0; i < rows.size(); i++) {
+            OrderRow row = rows.get(i);
+            String uniqueKey = uniqueKeys.get(i);
             try {
-
-                // A. GENERATE UNIQUE KEY
-                String uniqueKey = "";
-
-                if (channel.equalsIgnoreCase("Flipkart")) {
-                    // Flipkart Preference: Order Item ID
-                    if (row.orderItemId != null && !row.orderItemId.isEmpty()) {
-                        uniqueKey = row.orderItemId;
-                    } else {
-                        uniqueKey = row.orderId + "_" + row.sku; // Fallback
-                    }
-                } else {
-                    // Amazon/Others Preference: OrderID + SKU
-                    uniqueKey = row.orderId + "_" + row.sku;
-                }
-
-                // B. IDEMPOTENCY CHECK (Prevent Duplicates)
-                if (orderRepo.existsByUniqueReferenceId(uniqueKey)) {
+                if (existingKeys.contains(uniqueKey)) {
                     System.out.println("Already there");
-                    continue; // Already saved, skip
-
+                    continue;
                 }
 
-                // C. MAP TO ENTITY
                 SalesOrder order = new SalesOrder();
                 order.setUniqueReferenceId(uniqueKey);
                 order.setChannel(channel);
@@ -193,7 +203,6 @@ public class PicklistService {
                 order.setProductName(row.productTitle);
                 order.setDispatchByDate(row.dispatchByDate);
                 order.setBrand(row.brand);
-                // Product & Finance
                 order.setSku(row.sku);
                 order.setFsn(row.fsn);
                 order.setQuantity(row.qty);
@@ -201,54 +210,48 @@ public class PicklistService {
                 order.setProductPayment(row.product_payment);
                 order.setInvoiceNumber(row.invoiceNumber);
                 order.setAsin(row.asin);
-                System.out.print("Order Asin "+order.getAsin()+" , ");
-                // Logistics
                 order.setOrderStatus(normalizeStatus(row.status));
                 order.setTrackingId(row.trackingId);
-
-                // Customer
                 order.setCustomerCity(row.city);
                 order.setCustomerState(row.state);
                 order.setCustomerName(row.buyerName);
                 order.setWarehouseCode(row.warehouseCode);
                 order.setPincode(row.pincode);
+                order.setOrderDate(LocalDateTime.now());
 
-                order.setOrderDate(LocalDateTime.now()); // Set import time
-
-                // Getting Data from catalog to orders tab
-
-                Optional<productVariant>masterVariantOpt=variantRepo.findBySku(row.sku);
-                if(masterVariantOpt.isPresent()){
-                    productVariant masterData = masterVariantOpt.get();
-
-                    // Fetching Image Link of product from product table
-                    if(order.getImageUrl()==null||order.getImageUrl().isEmpty()){
-                        String masterImage=masterData.getVariantImageUrl();
-                        if(masterImage==null||masterImage.isEmpty()){
-                            masterImage=masterData.getProduct().getImageUrl();
+                productVariant masterData = variantMap.get(row.sku);
+                if (masterData != null) {
+                    if (order.getImageUrl() == null || order.getImageUrl().isEmpty()) {
+                        String masterImage = masterData.getVariantImageUrl();
+                        if (masterImage == null || masterImage.isEmpty()) {
+                            masterImage = masterData.getProduct().getImageUrl();
                         }
                         order.setImageUrl(masterImage);
                     }
-
-                    // Fetching Item Cost from Product Table
-                    if(order.getItemCost()==null||order.getItemCost().compareTo(BigDecimal.ZERO)==0){
+                    if (order.getItemCost() == null || order.getItemCost().compareTo(BigDecimal.ZERO) == 0) {
                         order.setItemCost(masterData.getProcurementCost());
                     }
-
-                    //
-                    if(order.getProductName()==null||order.getProductName().isEmpty()){
+                    if (order.getProductName() == null || order.getProductName().isEmpty()) {
                         order.setProductName(masterData.getProduct().getName());
                     }
 
-                    updateInventory(row.sku,row.qty,"RESERVED");
+                    // Fixed: was silently no-op'ing due to "RESERVED" vs "RESERVE" mismatch
+                    masterData.setStockCommitted(masterData.getStockCommitted() + row.qty);
+                    variantsToUpdate.add(masterData);
                 }
-                orderRepo.save(order);
+
+                ordersToSave.add(order);
                 savedCount++;
 
             } catch (Exception e) {
                 System.out.println("Skipping analytics save for row: " + e.getMessage());
             }
         }
+
+        // STEP 5: Two batched writes total (Hibernate groups these further thanks to P7's batch_size)
+        if (!ordersToSave.isEmpty()) orderRepo.saveAll(ordersToSave);
+        if (!variantsToUpdate.isEmpty()) variantRepo.saveAll(variantsToUpdate);
+
         System.out.println("✅ Analytics: Saved " + savedCount + " new orders from " + channel);
     }
 
