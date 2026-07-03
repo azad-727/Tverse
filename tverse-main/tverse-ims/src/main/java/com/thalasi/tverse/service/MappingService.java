@@ -49,7 +49,7 @@ public class MappingService {
 
         // ONE query: every channel→master mapping needed for this batch
         Map<String, String> masterSkuMap = mappingRepo.findByChannelSkuIn(distinctSkus).stream()
-                .collect(Collectors.toMap(SkuMapping::getChannelSku, SkuMapping::getMasterSku));
+                .collect(Collectors.toMap(SkuMapping::getChannelSku, SkuMapping::getMasterSku, (a, b) -> a));
 
         Map<String, String> resolvedBySku = new HashMap<>();
         for (String sku : distinctSkus) {
