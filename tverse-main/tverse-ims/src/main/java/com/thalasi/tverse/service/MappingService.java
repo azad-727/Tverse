@@ -26,6 +26,24 @@ public class MappingService {
     @Autowired
     private ProductBundleRepo bundleRepo;
 
+    public Map<String,Integer> resolveSku(String incomingSku, int orderQty){
+        Map<String,Integer> result=new HashMap<>();
+        String resolveSku = mappingRepo.findByChannelSku(incomingSku)
+                .map(SkuMapping::getMasterSku)
+                .orElse(incomingSku);
+
+        List<ProductBundle> components = bundleRepo.findByComboSku(resolveSku);
+
+        if(!components.isEmpty()){
+            for(ProductBundle component:components){
+                result.put(component.getComponentSku(),component.getQty()*orderQty);
+            }
+        }
+        else{
+            result.put(resolveSku,orderQty);
+        }
+        return result;
+    }
     public Map<String, Map<String, Integer>> resolveSkuRecipes(List<String> incomingSkus) {
         List<String> distinctSkus = new ArrayList<>(new HashSet<>(incomingSkus));
 

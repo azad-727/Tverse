@@ -20,61 +20,6 @@ public class ReturnService {
     @Autowired private InventoryService inventoryService; // Reuse existing inventory logic
     @Autowired private ProductVariantRepo variantRepo;
     @Autowired private MappingService mappingService;
-    @Autowired private SkuMappingRepo mappingRepo;
-    @Autowired private ProductBundleRepo bundleRepo;
-
-    public Map<String,Integer> resolveSku(String incomingSku, int orderQty){
-        Map<String,Integer> result=new HashMap<>();
-        String resolveSku = mappingRepo.findByChannelSku(incomingSku)
-                .map(SkuMapping::getMasterSku)
-                .orElse(incomingSku);
-
-        List<ProductBundle> components = bundleRepo.findByComboSku(resolveSku);
-
-        if(!components.isEmpty()){
-            for(ProductBundle component:components){
-                result.put(component.getComponentSku(),component.getQty()*orderQty);
-            }
-        }
-        else{
-            result.put(resolveSku,orderQty);
-        }
-        return result;
-    }
-
-    // NEW — added alongside, only used by PicklistService's batch import
-    public Map<String, Map<String, Integer>> resolveSkuRecipes(List<String> incomingSkus) {
-        List<String> distinctSkus = new ArrayList<>(new HashSet<>(incomingSkus));
-
-        Map<String, String> masterSkuMap = mappingRepo.findByChannelSkuIn(distinctSkus).stream()
-                .collect(Collectors.toMap(SkuMapping::getChannelSku, SkuMapping::getMasterSku));
-
-        Map<String, String> resolvedBySku = new HashMap<>();
-        for (String sku : distinctSkus) {
-            resolvedBySku.put(sku, masterSkuMap.getOrDefault(sku, sku));
-        }
-
-        List<String> resolvedSkus = new ArrayList<>(new HashSet<>(resolvedBySku.values()));
-        Map<String, List<ProductBundle>> bundleMap = bundleRepo.findByComboSkuIn(resolvedSkus).stream()
-                .collect(Collectors.groupingBy(ProductBundle::getComboSku));
-
-        Map<String, Map<String, Integer>> recipes = new HashMap<>();
-        for (String incomingSku : distinctSkus) {
-            String resolved = resolvedBySku.get(incomingSku);
-            List<ProductBundle> components = bundleMap.get(resolved);
-
-            Map<String, Integer> recipe = new HashMap<>();
-            if (components != null && !components.isEmpty()) {
-                for (ProductBundle c : components) {
-                    recipe.put(c.getComponentSku(), c.getQty());
-                }
-            } else {
-                recipe.put(resolved, 1);
-            }
-            recipes.put(incomingSku, recipe);
-        }
-        return recipes;
-    }
 
 
     @Transactional
