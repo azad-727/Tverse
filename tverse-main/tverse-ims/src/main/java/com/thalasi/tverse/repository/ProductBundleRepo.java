@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface ProductBundleRepo extends JpaRepository<ProductBundle,Long> {
     List<ProductBundle> findByComboSku(String resolveSku);
+    List<ProductBundle> findByComboSkuIn(List<String> comboSkus);
+
 }

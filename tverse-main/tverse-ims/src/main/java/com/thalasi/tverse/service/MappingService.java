@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.swing.text.DateFormatter;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class MappingService {
@@ -25,23 +26,40 @@ public class MappingService {
     @Autowired
     private ProductBundleRepo bundleRepo;
 
-    public Map<String,Integer> resolveSku(String incomingSku, int orderQty){
-        Map<String,Integer> result=new HashMap<>();
-        String resolveSku = mappingRepo.findByChannelSku(incomingSku)
-                .map(SkuMapping::getMasterSku)
-                .orElse(incomingSku);
+    public Map<String, Map<String, Integer>> resolveSkuRecipes(List<String> incomingSkus) {
+        List<String> distinctSkus = new ArrayList<>(new HashSet<>(incomingSkus));
 
-        List<ProductBundle> components = bundleRepo.findByComboSku(resolveSku);
+        // ONE query: every channel→master mapping needed for this batch
+        Map<String, String> masterSkuMap = mappingRepo.findByChannelSkuIn(distinctSkus).stream()
+                .collect(Collectors.toMap(SkuMapping::getChannelSku, SkuMapping::getMasterSku));
 
-        if(!components.isEmpty()){
-            for(ProductBundle component:components){
-                result.put(component.getComponentSku(),component.getQty()*orderQty);
+        Map<String, String> resolvedBySku = new HashMap<>();
+        for (String sku : distinctSkus) {
+            resolvedBySku.put(sku, masterSkuMap.getOrDefault(sku, sku));
+        }
+
+        // ONE query: every bundle's components for every resolved master SKU
+        List<String> resolvedSkus = new ArrayList<>(new HashSet<>(resolvedBySku.values()));
+        Map<String, List<ProductBundle>> bundleMap = bundleRepo.findByComboSkuIn(resolvedSkus).stream()
+                .collect(Collectors.groupingBy(ProductBundle::getComboSku));
+
+        // Build a "recipe" per incoming SKU: component SKU -> qty needed for ONE unit
+        Map<String, Map<String, Integer>> recipes = new HashMap<>();
+        for (String incomingSku : distinctSkus) {
+            String resolved = resolvedBySku.get(incomingSku);
+            List<ProductBundle> components = bundleMap.get(resolved);
+
+            Map<String, Integer> recipe = new HashMap<>();
+            if (components != null && !components.isEmpty()) {
+                for (ProductBundle c : components) {
+                    recipe.put(c.getComponentSku(), c.getQty());
+                }
+            } else {
+                recipe.put(resolved, 1);
             }
+            recipes.put(incomingSku, recipe);
         }
-        else{
-            result.put(resolveSku,orderQty);
-        }
-        return result;
+        return recipes;
     }
     public void  processBulkMapping(MultipartFile file,String type) throws IOException {
         DataFormatter formatter=new DataFormatter();

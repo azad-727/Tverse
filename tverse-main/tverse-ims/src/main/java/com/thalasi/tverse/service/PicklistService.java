@@ -97,14 +97,17 @@ public class PicklistService {
 
 
         // 3. AGGREGATE FOR PICKLIST (Operations)
+        List<String> allOrderSkus = rawOrders.stream().map(r -> r.sku).collect(Collectors.toList());
+        Map<String, Map<String, Integer>> recipes = mappingService.resolveSkuRecipes(allOrderSkus);
+
         Map<String, Integer> picklistMap = new HashMap<>();
         for (OrderRow row : rawOrders) {
-            Map<String,Integer> resolvedItems=mappingService.resolveSku(row.sku,row.qty);
-            for (Map.Entry<String, Integer> entry : resolvedItems.entrySet()) {
+            Map<String, Integer> recipe = recipes.get(row.sku);
+            for (Map.Entry<String, Integer> entry : recipe.entrySet()) {
                 String realSku = entry.getKey();
-                int realQty = entry.getValue();
-                if(row.status == null || !row.status.equalsIgnoreCase("Cancelled")) {
-                    picklistMap.merge(realSku, realQty, Integer::sum);
+                int qtyPerUnit = entry.getValue();
+                if (row.status == null || !row.status.equalsIgnoreCase("Cancelled")) {
+                    picklistMap.merge(realSku, qtyPerUnit * row.qty, Integer::sum);
                 }
             }
         }
