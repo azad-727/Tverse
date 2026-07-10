@@ -165,10 +165,9 @@ public class PicklistService {
         List<String> uniqueKeys = new ArrayList<>(rows.size());
         for (OrderRow row : rows) {
             String uniqueKey;
-            if (channel.equalsIgnoreCase("Flipkart")) {
-                uniqueKey = (row.orderItemId != null && !row.orderItemId.isEmpty())
-                        ? row.orderItemId
-                        : row.orderId + "_" + row.sku;
+            if ((row.orderItemId != null && !row.orderItemId.isEmpty())) {
+                uniqueKey =row.orderItemId;
+
             } else {
                 uniqueKey = row.orderId + "_" + row.sku;
             }
