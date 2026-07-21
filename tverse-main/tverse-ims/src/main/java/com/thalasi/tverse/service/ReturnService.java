@@ -29,6 +29,7 @@ public class ReturnService {
         String skuToRestock = request.getSku();
         int qtyToRestock = request.getQuantity();
         String orderIdRef = "EXTERNAL_NA";
+        String resolvedChannel;
 
         // 1. VALIDATION: Check duplicates
         if (returnRepo.existsByTrackingId(request.getTrackingId())) {
@@ -53,9 +54,11 @@ public class ReturnService {
                     .findFirst()
                     .orElseThrow(()->new RuntimeException("SKU not found in this Tracking ID"));
             orderIdRef=targetOrder.getOrderId();
+            resolvedChannel=targetOrder.getChannel();
         }
         else {
             orderIdRef = "EXTERNAL_" + request.getTrackingId();
+            resolvedChannel=request.getReturnChannel();
             // We verify the SKU exists in our Catalog so we can restock it
             if(!skuToRestock.equalsIgnoreCase("UNKNOWN_ITEM")) {
                 if (variantRepo.findBySku(skuToRestock).isEmpty()) {
@@ -112,7 +115,7 @@ public class ReturnService {
         // 5. INVENTORY UPDATE
         if (shouldRestock && !skuToRestock.equalsIgnoreCase("UNKNOWN_ITEM")) {
             // Resolve the incoming SKU down to its true internal master SKUs and quantities (handles singles and bundles)
-            Map<String, Integer> resolvedComponents = mappingService.resolveSku(skuToRestock, qtyToRestock);
+            Map<String, Integer> resolvedComponents = mappingService.resolveSku(resolvedChannel,skuToRestock,qtyToRestock);
 
             // Loop through every single resolved component piece to restock them individually
             for (Map.Entry<String, Integer> entry : resolvedComponents.entrySet()) {

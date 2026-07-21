@@ -26,9 +26,9 @@ public class MappingService {
     @Autowired
     private ProductBundleRepo bundleRepo;
 
-    public Map<String,Integer> resolveSku(String incomingSku, int orderQty){
+    public Map<String,Integer> resolveSku(String channel,String incomingSku,int orderQty){
         Map<String,Integer> result=new HashMap<>();
-        String resolveSku = mappingRepo.findByChannelSku(incomingSku)
+        String resolveSku = mappingRepo.findByChannelAndChannelSku(channel,incomingSku)
                 .map(SkuMapping::getMasterSku)
                 .orElse(incomingSku);
 
