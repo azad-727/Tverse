@@ -1,11 +1,16 @@
 package com.thalasi.tverse.service;
+import com.thalasi.tverse.dto.CursorPageDTO;
 import com.thalasi.tverse.dto.productRequestDTO;
 import com.thalasi.tverse.model.*;
 import com.thalasi.tverse.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -79,6 +84,25 @@ public class catalogService {
         productRepo.save(parent);
     }
 
+    public CursorPageDTO<productVariant> getAllListings(Long id, int pageSize){
+    Pageable pageable= PageRequest.of(0,pageSize);
+        Slice<productVariant> slice=(id==null)
+                ? variantRepo.findFirstPageProduct(pageable) :
+                variantRepo.findNextPageProduct(id,pageable);
+        List<productVariant> productList=slice.getContent();
+
+        CursorPageDTO<productVariant> result=new CursorPageDTO<>();
+        result.setItems(productList);
+        result.setHasNext(slice.hasNext());
+
+        if(slice.hasNext() && !productList.isEmpty()){
+            result.setNextCursor(productList.get(productList.size()-1).getId().toString());
+        }
+        else{
+            result.setNextCursor(null);
+        }
+        return result;
+    }
     @Transactional
     public void addNewProduct(productRequestDTO request){
         brand Brand=brandRepo.findByName(request.getBrandName())

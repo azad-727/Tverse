@@ -1,20 +1,18 @@
 package com.thalasi.tverse.controller;
 
-import com.thalasi.tverse.dto.SalesOverviewDTO;
-import com.thalasi.tverse.dto.VariantPerformanceDTO;
-import com.thalasi.tverse.dto.productRequestDTO;
+import com.thalasi.tverse.dto.*;
 import com.thalasi.tverse.model.DailyDashboardSnapshot;
 import com.thalasi.tverse.model.category;
 import com.thalasi.tverse.model.product;
 import com.thalasi.tverse.repository.*;
 import com.thalasi.tverse.service.*;
+import com.thalasi.tverse.util.CursorIdHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
-import com.thalasi.tverse.dto.ProductListingDTO;
 import com.thalasi.tverse.model.productVariant;
 
 import java.math.BigDecimal;
@@ -211,10 +209,24 @@ public class CatalogController {
     }
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
-    public ResponseEntity<List<ProductListingDTO>> getAllListings() {
-        List<productVariant> variants = variantRepo.findAllWithFullProduct();
+    public ResponseEntity<CursorPageDTO<ProductListingDTO>> getAllListings(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int pageSize) {
 
-        List<ProductListingDTO> dtos = variants.stream().map(v -> {
+        // Constrain pageSize to the allowed set - anything else falls back to 20
+        Set<Integer> allowedSizes = Set.of(20, 40, 80, 160);
+        if (!allowedSizes.contains(pageSize)) {
+            pageSize = 20;
+        }
+
+        // DECODE: wire format -> domain type, happens here in the controller
+        Long cursorId = CursorIdHandler.decodeCursorId(cursor);
+
+        // Service only ever sees a Long - stays ignorant of base64 entirely
+        CursorPageDTO<productVariant> serviceResult = catalogService.getAllListings(cursorId, pageSize);
+
+        // Map domain entities -> response DTOs (your existing mapping logic, unchanged)
+        List<ProductListingDTO> dtos = serviceResult.getItems().stream().map(v -> {
             ProductListingDTO dto = new ProductListingDTO();
             dto.setVariantId(v.getId());
             dto.setSku(v.getSku());
@@ -224,19 +236,27 @@ public class CatalogController {
             dto.setSize(v.getSize());
             dto.setColor(v.getColor());
 
-            // Parent Data
             if (v.getProduct() != null) {
                 dto.setProductName(v.getProduct().getName());
                 dto.setCategory(v.getProduct().getCategory() != null ? v.getProduct().getCategory().getName() : "-");
                 dto.setBrand(v.getProduct().getBrand() != null ? v.getProduct().getBrand().getName() : "-");
                 dto.setImageUrl(v.getProduct().getImageUrl());
-
                 dto.setVariantImageUrl(v.getVariantImageUrl());
             }
             return dto;
         }).collect(Collectors.toList());
 
-        return ResponseEntity.ok(dtos);
+        // ENCODE: domain type -> wire format, also happens here, right before the response goes out
+        CursorPageDTO<ProductListingDTO> response = new CursorPageDTO<>();
+        response.setItems(dtos);
+        response.setHasNext(serviceResult.isHasNext());
+        response.setNextCursor(
+                serviceResult.getNextCursor() != null
+                        ? CursorIdHandler.encodeCursorId(Long.parseLong(serviceResult.getNextCursor()))
+                        : null
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     // --- 6. QUICK EDIT (Stock & Price) ---

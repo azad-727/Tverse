@@ -1,5 +1,8 @@
 package com.thalasi.tverse.repository;
 import com.thalasi.tverse.model.productVariant;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +29,19 @@ public interface ProductVariantRepo extends JpaRepository<productVariant, Long>{
 
     Optional<productVariant> findBySku(String sku);
     List<productVariant> findBySkuIn(List<String> skus);
+
+    @Query("SELECT pv FROM productVariant pv "+
+            "JOIN FETCH pv.product p "+
+            "LEFT JOIN FETCH p.category "+
+            "LEFT JOIN FETCH p.brand "+
+            "WHERE pv.id> :cursorId "+
+            "ORDER BY pv.id ASC")
+    Slice<productVariant> findNextPageProduct(@Param("cursorId") Long cursorId, Pageable pageable);
+
+    @Query("SELECT pv FROM productVariant pv "+
+            "JOIN FETCH pv.product p "+
+            "LEFT JOIN FETCH p.category "+
+            "LEFT JOIN FETCH p.brand "+
+            "ORDER BY pv.id ASC")
+    Slice<productVariant> findFirstPageProduct(Pageable pageable);
 }
