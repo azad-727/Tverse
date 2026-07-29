@@ -84,12 +84,26 @@ public class catalogService {
         productRepo.save(parent);
     }
 
-    public CursorPageDTO<productVariant> getAllListings(Long id, int pageSize){
+    public CursorPageDTO<productVariant> getAllListings(Long id, int pageSize, String search){
     Pageable pageable= PageRequest.of(0,pageSize);
-        Slice<productVariant> slice=(id==null)
-                ? variantRepo.findFirstPageProduct(pageable) :
-                variantRepo.findNextPageProduct(id,pageable);
+        Slice<productVariant> slice;
+        boolean hasSearch=search!=null && !search.isBlank();
+        boolean hasId=id!=null;
+        String searchRelatedTerm=hasSearch?"%"+search.trim()+"%":null;
+        if(!hasId && !hasSearch){
+            slice= variantRepo.findFirstPageProduct(pageable);
+        } else if (!hasId && hasSearch) {
+            slice= variantRepo.findFirstPageProductSearch(searchRelatedTerm,searchRelatedTerm,pageable);
+        }
+        else if(hasId && hasSearch){
+            slice= variantRepo.findNextPageProductSearch(id,searchRelatedTerm,searchRelatedTerm,pageable);
+        }
+        else{
+            slice= variantRepo.findNextPageProduct(id,pageable);
+
+        }
         List<productVariant> productList=slice.getContent();
+
 
         CursorPageDTO<productVariant> result=new CursorPageDTO<>();
         result.setItems(productList);

@@ -44,4 +44,23 @@ public interface ProductVariantRepo extends JpaRepository<productVariant, Long>{
             "LEFT JOIN FETCH p.brand "+
             "ORDER BY pv.id ASC")
     Slice<productVariant> findFirstPageProduct(Pageable pageable);
+
+    @Query("SELECT pv from productVariant pv "+
+    "JOIN FETCH pv.product p "+
+    "LEFT JOIN FETCH p.category "+
+    "LEFT JOIN FETCH p.brand "+
+    "WHERE (LOWER(pv.sku) LIKE LOWER(:productSku) "+
+    "OR LOWER(p.name) LIKE LOWER(:productTitle)) "+
+    "ORDER BY pv.id ASC")
+    Slice<productVariant> findFirstPageProductSearch(@Param("productSku") String productSku,@Param("productTitle") String productTitle,Pageable pageable);
+
+    @Query("SELECT pv from productVariant pv "+
+    "JOIN FETCH pv.product p "+
+    "LEFT JOIN FETCH p.category "+
+    "LEFT JOIN FETCH p.brand "+
+    "WHERE (LOWER(pv.sku) LIKE LOWER(:productSku) "+
+    "OR LOWER(p.name) LIKE LOWER(:productTitle)) "+
+    "AND pv.id> :cursorId "+
+    "ORDER BY pv.id ASC")
+    Slice<productVariant> findNextPageProductSearch(@Param("cursorId")Long cursorId,@Param("productSku") String productSku,@Param("productTitle") String productTitle,Pageable pageable);
 }

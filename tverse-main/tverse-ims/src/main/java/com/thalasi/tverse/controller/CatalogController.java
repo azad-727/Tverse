@@ -211,6 +211,7 @@ public class CatalogController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'OWNER', 'EMPLOYEE')")
     public ResponseEntity<CursorPageDTO<ProductListingDTO>> getAllListings(
             @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "20") int pageSize) {
 
         // Constrain pageSize to the allowed set - anything else falls back to 20
@@ -223,7 +224,7 @@ public class CatalogController {
         Long cursorId = CursorIdHandler.decodeCursorId(cursor);
 
         // Service only ever sees a Long - stays ignorant of base64 entirely
-        CursorPageDTO<productVariant> serviceResult = catalogService.getAllListings(cursorId, pageSize);
+        CursorPageDTO<productVariant> serviceResult = catalogService.getAllListings(cursorId,pageSize,search);
 
         // Map domain entities -> response DTOs (your existing mapping logic, unchanged)
         List<ProductListingDTO> dtos = serviceResult.getItems().stream().map(v -> {
