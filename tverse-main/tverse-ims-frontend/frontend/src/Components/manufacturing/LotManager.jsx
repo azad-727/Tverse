@@ -67,13 +67,13 @@ const LotManager = () => {
     };
 
     const fetchSkus = async () => {
-        try {
-            const res = await apiClient.get("/api/catalog/list");
-            setAvailableSkus(res.data.map(item => item.sku));
-        } catch (e) { 
-            console.error("Failed to load SKUs for autocomplete", e); 
-        }
-    };
+    try {
+        const res = await apiClient.get("/api/catalog/list", { params: { pageSize: 160 } });
+        setAvailableSkus(res.data.items.map(item => item.sku));
+    } catch (e) {
+        console.error("Failed to load SKUs for autocomplete", e);
+    }
+};
 
     // --- HELPERS ---
     const calculateTotalQty = (lot) => {
