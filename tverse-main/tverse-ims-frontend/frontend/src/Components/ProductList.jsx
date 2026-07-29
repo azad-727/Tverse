@@ -12,31 +12,33 @@ const ProductList = () => {
     const [editForm, setEditForm] = useState({ stock: 0, cost: 0 });
 
     // --- CURSOR PAGINATION STATE ---
-    const [pageSize, setPageSize] = useState(20);           // operator-selectable: 20/40/80/160
-    const [cursor, setCursor] = useState(null);              // cursor used to fetch the CURRENT page (null = first page)
-    const [nextCursor, setNextCursor] = useState(null);      // cursor to use for the NEXT page, from the server response
+    const [pageSize, setPageSize] = useState(20);
+    const [cursor, setCursor] = useState(null);
+    const [nextCursor, setNextCursor] = useState(null);
     const [hasNext, setHasNext] = useState(false);
-    const [cursorHistory, setCursorHistory] = useState([]);  // stack of prior cursors, needed to support "Prev"
-    const [pageNumber, setPageNumber] = useState(1);         // display-only counter, no total-page count with cursors
+    const [cursorHistory, setCursorHistory] = useState([]);
+    const [pageNumber, setPageNumber] = useState(1);
+    const [initialLoading, setInitialLoading] = useState(true);
 
-    const fetchProducts = async (cursorToFetch = null) => {
-        setLoading(true);
-        try {
-            const params = { pageSize };
-            if (cursorToFetch) params.cursor = cursorToFetch;
-            const res = await apiClient.get("/api/catalog/list", { params });
-            setProducts(res.data.items);
-            setHasNext(res.data.hasNext);
-            setNextCursor(res.data.nextCursor);
-            setLoading(false);
-        } catch (error) {
-            console.error("Error fetching products", error);
-            setLoading(false);
-        }
-    };
+    const fetchProducts = async (cursorToFetch = null, searchToUse = searchTerm) => {
+    setLoading(true);
+    try {
+        const params = { pageSize };
+        if (cursorToFetch) params.cursor = cursorToFetch;
+        if (searchToUse) params.search = searchToUse;
+        const res = await apiClient.get("/api/catalog/list", { params });
+        setProducts(res.data.items);
+        setHasNext(res.data.hasNext);
+        setNextCursor(res.data.nextCursor);
+    } catch (error) {
+        console.error("Error fetching products", error);
+    } finally {
+        setLoading(false);
+        setInitialLoading(false);   // only matters the first time; harmless to call every time after
+    }
+};
 
-    // Runs on mount, and any time pageSize changes - always resets back to page 1,
-    // since a cursor from one page size isn't valid against a different page size.
+    // Runs on mount, and any time pageSize changes
     useEffect(() => {
         setCursor(null);
         setCursorHistory([]);
@@ -45,9 +47,21 @@ const ProductList = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize]);
 
+    // Debounced search - resets to page 1 and refetches from the server 800ms after typing stops
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setCursor(null);
+            setCursorHistory([]);
+            setPageNumber(1);
+            fetchProducts(null, searchTerm);
+        }, 800);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm]);
+
     const goToNextPage = () => {
         if (!hasNext || !nextCursor) return;
-        setCursorHistory(prev => [...prev, cursor]); // remember current cursor so Prev can return to it
+        setCursorHistory(prev => [...prev, cursor]);
         setCursor(nextCursor);
         setPageNumber(p => p + 1);
         fetchProducts(nextCursor);
@@ -102,16 +116,7 @@ const ProductList = () => {
         }
     };
 
-    // LIMITATION: this now only searches within the CURRENTLY LOADED PAGE, not the whole
-    // catalog - cursor pagination doesn't fetch everything up front anymore, so there's no
-    // full in-memory list left to filter across pages. A real cross-catalog search would need
-    // a separate server-side `?search=` param on this endpoint (not built in this pass).
-    const filteredProducts = products.filter(p =>
-        (p.productName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (p.sku?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-
-    if (loading) return <div className="text-center p-5"><span className="spinner-border text-success"></span><p className="mt-2 small text-muted">Loading System Inventory Ledger...</p></div>;
+    if (initialLoading) return <div className="text-center p-5"><span className="spinner-border text-success"></span><p className="mt-2 small text-muted">Loading System Inventory Ledger...</p></div>;
 
     return (
         <div className="container-fluid p-0">
@@ -132,13 +137,12 @@ const ProductList = () => {
                     <input
                         type="text"
                         className="form-control border-start-0 shadow-none ps-1"
-                        placeholder="Filter this page by SKU or Title..."
+                        placeholder="Search catalog by SKU or Title..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <div className="d-flex align-items-center gap-3">
-                    {/* Page size selector - constrained to the allowed set the backend accepts */}
                     <select
                         className="form-select form-select-sm"
                         style={{ width: '90px' }}
@@ -157,7 +161,7 @@ const ProductList = () => {
                 </div>
             </div>
 
-            {/* Table (unchanged from here down except filteredProducts source) */}
+            {/* Table */}
             <div className="card border-0 shadow-sm overflow-hidden">
                 <div className="table-responsive">
                     <table className="table table-hover align-middle mb-0" style={{ minWidth: '900px' }}>
@@ -173,7 +177,7 @@ const ProductList = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredProducts.map(p => (
+                            {products.map(p => (
                                 <tr key={p.variantId}>
                                     <td style={{ paddingLeft: '16px' }}>
                                         <Link to={`/inventory/product/${p.sku}`}>
@@ -253,7 +257,7 @@ const ProductList = () => {
                                     )}
                                 </tr>
                             ))}
-                            {filteredProducts.length === 0 && (
+                            {products.length === 0 && (
                                 <tr>
                                     <td colSpan="7" className="text-center p-5 text-muted small fw-medium">
                                         <i className="bi bi-clipboard2-x d-block fs-2 mb-2 text-secondary opacity-50"></i>
@@ -266,7 +270,7 @@ const ProductList = () => {
                 </div>
             </div>
 
-            {/* CURSOR PAGINATION CONTROLS - no "Page X of Y" since cursor pagination has no cheap total count */}
+            {/* CURSOR PAGINATION CONTROLS */}
             <div className="d-flex justify-content-between align-items-center mt-3">
                 <span className="text-muted small">Page {pageNumber}</span>
                 <div className="d-flex gap-2">
