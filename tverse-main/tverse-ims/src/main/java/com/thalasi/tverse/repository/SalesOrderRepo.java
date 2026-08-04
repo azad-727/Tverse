@@ -43,19 +43,19 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     //---- Filtering with multiple options
 
     @Query("SELECT o FROM SalesOrder o WHERE"+
-    "(:status IS NULL OR o.orderStatus =:status) AND "+
-    "(:channel IS NULL OR o.channel=:channel) AND"+
-    "(:fromDate IS NULL OR o.orderDate >=:fromDate) AND"+
-    "(:toDate IS NULL OR o.orderDate <=:toDate) AND"+
-    "(:dispatchDate IS NULL OR DATE(o.dispatchByDate) = DATE(:dispatchDate))")
+            "(:status IS NULL OR o.orderStatus =:status) AND "+
+            "(:channel IS NULL OR o.channel=:channel) AND"+
+            "(:fromDate IS NULL OR o.orderDate >=:fromDate) AND"+
+            "(:toDate IS NULL OR o.orderDate <=:toDate) AND"+
+            "(:dispatchDate IS NULL OR DATE(o.dispatchByDate) = DATE(:dispatchDate))")
     List<SalesOrder> filterOrders(
-        @Param("status") String status,
-        @Param("channel") String channel,
-        @Param("fromDate") LocalDateTime fromDate,
-        @Param("toDate") LocalDateTime toDate,
-        @Param("dispatchDate") LocalDateTime dispatchDate
+            @Param("status") String status,
+            @Param("channel") String channel,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate,
+            @Param("dispatchDate") LocalDateTime dispatchDate
     );
-//    @Query("SELECT i.sku, SUM(i.sellingPrice * i.quantity) " +
+    //    @Query("SELECT i.sku, SUM(i.sellingPrice * i.quantity) " +
 //            "FROM SalesOrderItem i " +
 //            "GROUP BY i.sku " +
 //            "ORDER BY SUM(i.sellingPrice * i.quantity) DESC")
@@ -86,7 +86,7 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByStatusAndDateAfter(@Param("status") String status, @Param("date") LocalDateTime date);
 
     Optional<SalesOrder> findByOrderIdAndSku(String orderId, String sku);
-//    @Query("SELECT o FROM SalesOrder o WHERE LOWER(o.trackingId) = LOWER(:query) " +
+    //    @Query("SELECT o FROM SalesOrder o WHERE LOWER(o.trackingId) = LOWER(:query) " +
 //            "OR LOWER(o.orderId) = LOWER(:query) " +
 //            "OR LOWER(o.shipmentId) = LOWER(:query)")
 //    List<SalesOrder> findOrdersByMultiSearch(@Param("query") String query);
@@ -94,34 +94,35 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     List<String> findExistingUniqueReferenceIds(@Param("ids") List<String> ids);
 
     @Query("SELECT o FROM SalesOrder o WHERE o.orderStatus = :status AND "+
-            "(o.dispatchByDate > :cursorDate OR"+
-            "(o.dispatchByDate = :cursorDate AND o.id > :cursorId)) " +
-            "ORDER BY o.dispatchByDate ASC, o.id ASC ")
+            "(o.dispatchByDate < :cursorDate OR"+
+            "(o.dispatchByDate = :cursorDate AND o.id < :cursorId)) " +
+            "ORDER BY o.dispatchByDate DESC, o.id DESC ")
     Slice<SalesOrder> findByNextOrdersPage(
             @Param("status") String status,
             @Param("cursorDate") LocalDateTime cursorDate,
             @Param("cursorId") Long cursorId,
             Pageable pageable);
-    Slice<SalesOrder> findByOrderStatusOrderByDispatchByDateAscIdAsc(String orderStatus, Pageable pageable);
+    Slice<SalesOrder> findByOrderStatusOrderByDispatchByDateDescIdDesc(String orderStatus, Pageable pageable);
 
     @Query("SELECT o FROM SalesOrder o WHERE "+
             "(o.trackingId LIKE CONCAT('%', :query, '%') OR "+
             "o.orderId LIKE CONCAT('%', :query, '%') OR "+
             "o.sku LIKE CONCAT('%', :query, '%')) "+
-            "ORDER BY o.dispatchByDate ASC, o.id ASC")
-        Slice<SalesOrder> searchOrdersFirstPage(@Param("query") String query,
-                                               Pageable pageable);
+            "ORDER BY o.dispatchByDate DESC, o.id DESC")
+    Slice<SalesOrder> searchOrdersFirstPage(@Param("query") String query,
+                                            Pageable pageable);
+
     @Query("SELECT o FROM SalesOrder o WHERE "+
             "(o.trackingId LIKE CONCAT('%', :query, '%') OR "+
             "o.orderId LIKE CONCAT('%', :query, '%') OR "+
             "o.sku LIKE CONCAT('%', :query, '%')) AND "+
-            "(o.dispatchByDate > :cursorDate OR " +
-            "(o.dispatchByDate = :cursorDate AND o.id > :cursorId)) "+
-            "ORDER BY o.dispatchByDate ASC, o.id ASC")
-        Slice<SalesOrder> searchOrdersNextPage(@Param("query") String query,
-                                              @Param("cursorDate") LocalDateTime cursorDate,
-                                              @Param("cursorId") Long id,
-                                              Pageable pageable);
+            "(o.dispatchByDate < :cursorDate OR " +
+            "(o.dispatchByDate = :cursorDate AND o.id < :cursorId)) "+
+            "ORDER BY o.dispatchByDate DESC, o.id DESC")
+    Slice<SalesOrder> searchOrdersNextPage(@Param("query") String query,
+                                           @Param("cursorDate") LocalDateTime cursorDate,
+                                           @Param("cursorId") Long id,
+                                           Pageable pageable);
 
 
 }

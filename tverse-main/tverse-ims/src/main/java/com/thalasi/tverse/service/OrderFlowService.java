@@ -37,7 +37,7 @@ public class OrderFlowService {
         CompoundCursorHandler.OrderCursorPayload decodedCursor = CompoundCursorHandler.decode(cursor);
 
         if(decodedCursor==null){
-            slice=orderRepo.findByOrderStatusOrderByDispatchByDateAscIdAsc(status,PageRequest.of(0,limit));
+            slice=orderRepo.findByOrderStatusOrderByDispatchByDateDescIdDesc(status,PageRequest.of(0,limit));
         } else {
             slice = orderRepo.findByNextOrdersPage(status,decodedCursor.getDispatchDate(), decodedCursor.getId(), PageRequest.of(0,limit));
         }
