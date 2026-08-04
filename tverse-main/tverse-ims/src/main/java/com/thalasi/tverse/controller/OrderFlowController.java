@@ -20,6 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("api/orders/flow")
+@CrossOrigin(origins = "*")
 public class OrderFlowController {
     @Autowired
     private OrderFlowService orderFlowService;
@@ -28,10 +29,11 @@ public class OrderFlowController {
     SalesOrderRepo salesOrderRepo;
 
     @GetMapping("/list")
-    public ResponseEntity<CursorPageDTO<SalesOrder>> getOrdersByStatus(@RequestParam String status,
-                                                                       @RequestParam(required = false) String cursorId,
-                                                                       @RequestParam(defaultValue = "50") int limit){
-        return ResponseEntity.ok(orderFlowService.getOrdersByStatus(status,cursorId,limit));
+    public ResponseEntity<CursorPageDTO<SalesOrder>> getOrdersByStatus(
+            @RequestParam String status,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "50") int limit){
+        return ResponseEntity.ok(orderFlowService.getOrdersByStatus(status, cursor, limit));
     }
     @GetMapping("/counts")
     public ResponseEntity<Map<String,Long>> getOrderCounts(){
@@ -170,7 +172,7 @@ public class OrderFlowController {
     }
 
     @PostMapping("/manual")
-        public ResponseEntity<String> createManualOrder(@RequestBody ManualOrderRequestDTO request){
+    public ResponseEntity<String> createManualOrder(@RequestBody ManualOrderRequestDTO request){
         try{
             orderFlowService.createManualOrder(request);
             return ResponseEntity.ok("Manual Order Created Successfully");

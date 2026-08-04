@@ -14,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
+@CrossOrigin(origins = "*")
 public class OrderController {
 
     @Autowired
@@ -41,10 +42,11 @@ public class OrderController {
         // Clean the input to remove accidental scanner spaces
         String cleanQuery = query.trim();
         List<SalesOrder> results = repo.findByTrackingId(cleanQuery);
-
-        if (results.isEmpty()) {
+        // Use the new multi-column search so it finds Order IDs, Tracking IDs, and Shipment IDs
+        if(results.isEmpty()){
             results = repo.findByOrderId(cleanQuery);
         }
+
         return ResponseEntity.ok(results);
     }
 
