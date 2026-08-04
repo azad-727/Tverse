@@ -10,14 +10,12 @@ const OrderManagement = () => {
     const [quickViewOrder, setQuickViewOrder] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
-    // --- NEW: Pagination & Refresh State ---
+    // --- Pagination & Refresh State ---
     const [currentCursor, setCurrentCursor] = useState(null);
     const [cursorHistory, setCursorHistory] = useState([]); 
     const [hasNext, setHasNext] = useState(false);
     const [nextCursorStr, setNextCursorStr] = useState(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0); 
-    
-    // --- NEW: Page Size Limit State ---
     const [limit, setLimit] = useState(50);
 
     const statusMap = {
@@ -32,7 +30,7 @@ const OrderManagement = () => {
         try {
             const res = await apiClient.get(`/api/orders/flow/counts`);
             setStats(res.data);
-        } catch (e) { console.error("Error Fetching order count;", e); }
+        } catch (e) { console.error("Error Fetching order count:", e); }
     }
 
     const formatOrders = (dataList) => {
@@ -62,13 +60,16 @@ const OrderManagement = () => {
         setSelectedIds([]); 
     }, [activeTab, searchTerm, limit]);
 
-    // --- MASTER DATA FETCHER ---
+    // --- BULLETPROOF MASTER DATA FETCHER ---
     useEffect(() => {
-        const delayDebounceFn = setTimeout(async () => {
+        let isMounted = true; // Protects against React race conditions
+
+        const fetchData = async () => {
             try {
                 let res;
-                // Add the limit parameter to both API calls!
-                const cursorParam = currentCursor ? `&cursor=${encodeURIComponent(currentCursor)}` : '';
+                // Double encode protects against aggressive Nginx API gateways decoding the '+' symbol early
+                const safeCursor = currentCursor ? encodeURIComponent(currentCursor) : '';
+                const cursorParam = safeCursor ? `&cursor=${safeCursor}` : '';
                 
                 if (searchTerm.trim()) {
                     res = await apiClient.get(`/api/orders/flow/search?query=${searchTerm}${cursorParam}&limit=${limit}`);
@@ -76,6 +77,8 @@ const OrderManagement = () => {
                     const dbStatus = statusMap[activeTab];
                     res = await apiClient.get(`/api/orders/flow/list?status=${dbStatus}${cursorParam}&limit=${limit}`);
                 }
+
+                if (!isMounted) return; // Discard data if component unmounted or re-rendered
 
                 const dataArray = res.data.items || res.data; 
                 const hasNextPage = res.data.hasNext || false;
@@ -88,20 +91,40 @@ const OrderManagement = () => {
             } catch (error) {
                 console.error("Data fetch failed", error);
             }
-        }, searchTerm ? 800 : 0); 
+        };
 
-        return () => clearTimeout(delayDebounceFn);
+        // Only use the timeout delay if the user is actively typing a search
+        if (searchTerm.trim()) {
+            const delayDebounceFn = setTimeout(fetchData, 800);
+            return () => {
+                isMounted = false;
+                clearTimeout(delayDebounceFn);
+            };
+        } else {
+            // Immediate execution for standard pagination clicks! No cancellation risk.
+            fetchData();
+            return () => { isMounted = false; };
+        }
     }, [activeTab, currentCursor, searchTerm, refreshTrigger, limit]);
 
     useEffect(() => { 
         fetchCounts(); 
     }, [activeTab, refreshTrigger]);
 
-    // --- PAGINATION HANDLERS ---
+    // --- SAFE PAGINATION HANDLERS ---
     const handleNextPage = () => {
         if (hasNext && nextCursorStr) {
-            setCursorHistory(prev => [...prev, currentCursor]); 
-            setCurrentCursor(nextCursorStr); 
+            if (currentCursor === nextCursorStr) {
+                // BUG CATCHER: Backend sent the exact same cursor back. 
+                console.warn("Backend returned an identical cursor. Forcing refresh.");
+                setRefreshTrigger(prev => prev + 1);
+            } else {
+                setCursorHistory(prev => [...prev, currentCursor]); 
+                setCurrentCursor(nextCursorStr); 
+            }
+        } else if (hasNext && !nextCursorStr) {
+            // BUG CATCHER: Backend says there is a next page, but didn't provide a cursor token!
+            alert("Backend Pagination Error: The database has more items, but failed to generate a valid cursor token (Likely due to a null dispatchByDate).");
         }
     };
 
@@ -114,7 +137,6 @@ const OrderManagement = () => {
         }
     };
 
-    // Reset pagination when limit is changed
     const handleLimitChange = (e) => {
         setLimit(Number(e.target.value));
     };
@@ -629,14 +651,13 @@ const OrderManagement = () => {
                     ))}
                 </div>
 
-                {/* --- UPDATED: DYNAMIC PAGINATION FOOTER W/ LIMIT SELECTOR --- */}
+                {/* --- DYNAMIC PAGINATION FOOTER W/ LIMIT SELECTOR --- */}
                 <div className="p-3 border-top d-flex justify-content-between align-items-center bg-light">
                     <div className="d-flex align-items-center gap-3">
                         <span className="small text-muted d-none d-md-inline">
                             Page {cursorHistory.length + 1} &nbsp;·&nbsp; {orders.length} orders on this page
                         </span>
                         
-                        {/* THE NEW PAGE SIZE DROPDOWN */}
                         <div className="d-flex align-items-center gap-2">
                             <span className="small text-muted">Show:</span>
                             <select 
