@@ -40,9 +40,11 @@ public class OrderController {
 
         // Clean the input to remove accidental scanner spaces
         String cleanQuery = query.trim();
+        List<SalesOrder> results = repo.findByTrackingId(cleanQuery);
 
-        // Use the new multi-column search so it finds Order IDs, Tracking IDs, and Shipment IDs
-        List<SalesOrder> results = repo.findOrdersByMultiSearch(cleanQuery);
+        if (results.isEmpty()) {
+            results = repo.findByOrderId(cleanQuery);
+        }
         return ResponseEntity.ok(results);
     }
 
