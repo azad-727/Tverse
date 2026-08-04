@@ -1,5 +1,6 @@
 package com.thalasi.tverse.controller;
 
+import com.thalasi.tverse.dto.CursorPageDTO;
 import com.thalasi.tverse.dto.DailyDispatchDTO;
 import com.thalasi.tverse.dto.ManualOrderRequestDTO;
 import com.thalasi.tverse.model.DailyDispatch;
@@ -27,8 +28,10 @@ public class OrderFlowController {
     SalesOrderRepo salesOrderRepo;
 
     @GetMapping("/list")
-    public ResponseEntity<List<SalesOrder>> getOrdersByStatus(@RequestParam String status){
-        return ResponseEntity.ok(orderFlowService.getOrdersByStatus(status));
+    public ResponseEntity<CursorPageDTO<SalesOrder>> getOrdersByStatus(@RequestParam String status,
+                                                                       @RequestParam(required = false) String cursorId,
+                                                                       @RequestParam(defaultValue = "50") int limit){
+        return ResponseEntity.ok(orderFlowService.getOrdersByStatus(status,cursorId,limit));
     }
     @GetMapping("/counts")
     public ResponseEntity<Map<String,Long>> getOrderCounts(){

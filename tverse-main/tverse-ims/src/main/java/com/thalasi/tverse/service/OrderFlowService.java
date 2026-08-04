@@ -1,5 +1,6 @@
 package com.thalasi.tverse.service;
 
+import com.thalasi.tverse.dto.CursorPageDTO;
 import com.thalasi.tverse.dto.ManualOrderRequestDTO;
 import com.thalasi.tverse.model.Customer;
 import com.thalasi.tverse.model.SalesOrder;
@@ -8,8 +9,13 @@ import com.thalasi.tverse.repository.CustomerRepo;
 import com.thalasi.tverse.repository.SalesOrderRepo;
 import com.thalasi.tverse.repository.ProductVariantRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.thalasi.tverse.dto.CursorPageDTO;
+import com.thalasi.tverse.util.CompoundCursorHandler;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -26,9 +32,16 @@ public class OrderFlowService {
     private CustomerRepo customerRepo;
 
 //     1. Get Orders by Tab (Status)
-    public List<SalesOrder> getOrdersByStatus(String status) {
-        List<SalesOrder> orders= orderRepo.findByOrderStatusOrderByDispatchByDateAsc(status);
+    public CursorPageDTO<SalesOrder> getOrdersByStatus(String status,String cursor,int limit) {
+        Slice<SalesOrder> slice;
+        CompoundCursorHandler.OrderCursorPayload decodedCursor = CompoundCursorHandler.decode(cursor);
 
+        if(decodedCursor==null){
+            slice=orderRepo.findByOrderStatusOrderByDispatchByDateAscIdAsc(status,PageRequest.of(0,limit));
+        } else {
+            slice = orderRepo.findByNextOrdersPage(status,decodedCursor.getDispatchDate(), decodedCursor.getId(), PageRequest.of(0,limit));
+        }
+        List<SalesOrder> orders=slice.getContent();
         LocalDateTime now=LocalDateTime.now();
         for(SalesOrder order:orders){
             if(order.getDispatchByDate()!=null){
@@ -38,7 +51,63 @@ public class OrderFlowService {
                 order.setSlaHours(0);
             }
         }
-        return orders;
+
+        String nextCursorId=null;
+        if (slice.hasNext() && !orders.isEmpty()){
+            SalesOrder lastOrder=orders.get(orders.size()-1);
+            nextCursorId=CompoundCursorHandler.encode(lastOrder.getDispatchByDate(),lastOrder.getId());
+        }
+        CursorPageDTO<SalesOrder> cursorDTO=new CursorPageDTO<>();
+        cursorDTO.setNextCursor(slice.hasNext()?nextCursorId:null);
+        cursorDTO.setHasNext(slice.hasNext());
+        cursorDTO.setItems(orders);
+        return cursorDTO;
+    }
+    public CursorPageDTO<SalesOrder> searchOrdersPaginated(String query, String cursor, int limit) {
+        Slice<SalesOrder> slice;
+        CompoundCursorHandler.OrderCursorPayload decodedCursor = CompoundCursorHandler.decode(cursor);
+
+        // Strip whitespace to prevent accidental failed searches
+        String cleanQuery = query.trim();
+
+        if (decodedCursor == null) {
+            // Page 1
+            slice = orderRepo.searchOrdersFirstPage(cleanQuery, PageRequest.of(0, limit));
+        } else {
+            // Page 2+
+            slice = orderRepo.searchOrdersNextPage(
+                    cleanQuery,
+                    decodedCursor.getDispatchDate(),
+                    decodedCursor.getId(),
+                    PageRequest.of(0, limit)
+            );
+        }
+
+        List<SalesOrder> orders = slice.getContent();
+        LocalDateTime now = LocalDateTime.now();
+
+        // Calculate SLA hours exactly like the normal list view
+        for (SalesOrder order : orders) {
+            if (order.getDispatchByDate() != null) {
+                long hoursLeft = Duration.between(now, order.getDispatchByDate()).toHours();
+                order.setSlaHours(hoursLeft);
+            } else {
+                order.setSlaHours(0);
+            }
+        }
+
+        // Generate the cursor for the NEXT page
+        String nextCursor = null;
+        if (slice.hasNext() && !orders.isEmpty()) {
+            SalesOrder lastOrder = orders.get(orders.size() - 1);
+            nextCursor = CompoundCursorHandler.encode(lastOrder.getDispatchByDate(), lastOrder.getId());
+        }
+        CursorPageDTO<SalesOrder> cursorPageDTO=new CursorPageDTO<>();
+        cursorPageDTO.setHasNext(slice.hasNext());
+        cursorPageDTO.setNextCursor(nextCursor);
+        cursorPageDTO.setItems(orders);
+        if(!slice.hasNext()){ cursorPageDTO.setNextCursor(null);}
+        return cursorPageDTO;
     }
 
     // 2. Action: Generate Labels (Move to PACKING_IN_PROGRESS)

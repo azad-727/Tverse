@@ -3,6 +3,8 @@ package com.thalasi.tverse.repository;
 import com.thalasi.tverse.model.SalesOrder;
 import com.thalasi.tverse.projection.SkuRevenueProjection;
 import com.thalasi.tverse.projection.SkuVelocityProjection;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -84,12 +86,42 @@ public interface SalesOrderRepo extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByStatusAndDateAfter(@Param("status") String status, @Param("date") LocalDateTime date);
 
     Optional<SalesOrder> findByOrderIdAndSku(String orderId, String sku);
-    @Query("SELECT o FROM SalesOrder o WHERE LOWER(o.trackingId) = LOWER(:query) " +
-            "OR LOWER(o.orderId) = LOWER(:query) " +
-            "OR LOWER(o.shipmentId) = LOWER(:query)")
-    List<SalesOrder> findOrdersByMultiSearch(@Param("query") String query);
+//    @Query("SELECT o FROM SalesOrder o WHERE LOWER(o.trackingId) = LOWER(:query) " +
+//            "OR LOWER(o.orderId) = LOWER(:query) " +
+//            "OR LOWER(o.shipmentId) = LOWER(:query)")
+//    List<SalesOrder> findOrdersByMultiSearch(@Param("query") String query);
     @Query("SELECT s.uniqueReferenceId FROM SalesOrder s WHERE s.uniqueReferenceId IN :ids")
     List<String> findExistingUniqueReferenceIds(@Param("ids") List<String> ids);
+
+    @Query("SELECT o FROM SalesOrder o WHERE o.orderStatus = :status AND "+
+            "(o.dispatchByDate > :cursorDate OR"+
+            "(o.dispatchByDate = :cursorDate AND o.id > :cursorId)) " +
+            "ORDER BY o.dispatchByDate ASC, o.id ASC ")
+    Slice<SalesOrder> findByNextOrdersPage(
+            @Param("status") String status,
+            @Param("cursorDate") LocalDateTime cursorDate,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
+    Slice<SalesOrder> findByOrderStatusOrderByDispatchByDateAscIdAsc(String orderStatus, Pageable pageable);
+
+    @Query("SELECT o FROM SalesOrder o WHERE "+
+            "(o.trackingId LIKE CONCAT('%', :query, '%') OR "+
+            "o.orderId LIKE CONCAT('%', :query, '%') OR "+
+            "o.sku LIKE CONCAT('%', :query, '%')) "+
+            "ORDER BY o.dispatchByDate ASC, o.id ASC")
+        Slice<SalesOrder> searchOrdersFirstPage(@Param("query") String query,
+                                               Pageable pageable);
+    @Query("SELECT o FROM SalesOrder o WHERE "+
+            "(o.trackingId LIKE CONCAT('%', :query, '%') OR "+
+            "o.orderId LIKE CONCAT('%', :query, '%') OR "+
+            "o.sku LIKE CONCAT('%', :query, '%')) AND "+
+            "(o.dispatchByDate > :cursorDate OR " +
+            "(o.dispatchByDate = :cursorDate AND o.id > :cursorId)) "+
+            "ORDER BY o.dispatchByDate ASC, o.id ASC")
+        Slice<SalesOrder> searchOrdersNextPage(@Param("query") String query,
+                                              @Param("cursorDate") LocalDateTime cursorDate,
+                                              @Param("cursorId") Long id,
+                                              Pageable pageable);
 
 
 }
