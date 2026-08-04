@@ -5,105 +5,152 @@ const OrderManagement = () => {
     const [activeTab, setActiveTab] = useState('Pending Labels');
     const [orders, setOrders] = useState([]);
     const [selectedIds, setSelectedIds] = useState([]);
-    const [filters,setFilters]=useState({ fromDate:"", toDate:"", channel:"", sku:"" });
-    const [stats,setStats] = useState({approved:"",new:"",packing_in_progress:"",dispatch_ready:"",shipped:"",on_hold:""});
+    const [filters, setFilters] = useState({ fromDate: "", toDate: "", channel: "", sku: "" });
+    const [stats, setStats] = useState({ approved: "", new: "", packing_in_progress: "", dispatch_ready: "", shipped: "", on_hold: "" });
     const [quickViewOrder, setQuickViewOrder] = useState(null);
-    const [searchTerm ,setSearchTerm] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+
+    // --- NEW: Pagination & Refresh State ---
+    const [currentCursor, setCurrentCursor] = useState(null);
+    const [cursorHistory, setCursorHistory] = useState([]); 
+    const [hasNext, setHasNext] = useState(false);
+    const [nextCursorStr, setNextCursorStr] = useState(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0); 
+    
+    // --- NEW: Page Size Limit State ---
+    const [limit, setLimit] = useState(50);
 
     const statusMap = {
-        'Pending Labels':'Approved'||'NEW',
-        'Pending RTD':'PACKING_IN_PROGRESS',
-        'Pending Handover':'DISPATCH_READY',
-        'Completed':'SHIPPED',
-        'On-Hold':'ON-HOLD'
+        'Pending Labels': 'APPROVED', 
+        'Pending RTD': 'PACKING_IN_PROGRESS',
+        'Pending Handover': 'DISPATCH_READY',
+        'Completed': 'SHIPPED',
+        'On-Hold': 'ON-HOLD'
     };
 
-    const fetchCounts = async ()=> {
-        try{
-            const res=await apiClient.get(`/api/orders/flow/counts`);
-            console.log("COUNTS RESPONSE:", res.data);
-            setStats(res.data); 
-        }catch(e){ console.error("Error Fetching order count;",e); }
+    const fetchCounts = async () => {
+        try {
+            const res = await apiClient.get(`/api/orders/flow/counts`);
+            setStats(res.data);
+        } catch (e) { console.error("Error Fetching order count;", e); }
     }
+
+    const formatOrders = (dataList) => {
+        if (!dataList || !Array.isArray(dataList)) return [];
+        return dataList.map(order => ({
+            id: order.id, 
+            orderId: order.orderId,
+            itemId: order.orderItemId || order.uniqueReferenceId, 
+            channel: order.channel,
+            img: order.imageUrl ? (order.imageUrl.startsWith('http') ? order.imageUrl : `${apiClient.defaults.baseURL || 'http://localhost:8080'}/${order.imageUrl}`) : "http://via.placeholder.com/100",
+            title: order.productName, 
+            sku: order.sku, 
+            fsn: order.fsn || order.asin,
+            itemcost: order.itemCost, 
+            qty: order.quantity,
+            amount: order.sellingPrice || order.productPayment + ((order.productPayment * 39) / 100),
+            slaHours: order.slaHours, 
+            dispatchBy: order.dispatchByDate, 
+            originalData: order
+        }));
+    };
+
+    // --- RESET PAGINATION when Tab, Search, or Limit changes ---
+    useEffect(() => {
+        setCurrentCursor(null);
+        setCursorHistory([]);
+        setSelectedIds([]); 
+    }, [activeTab, searchTerm, limit]);
+
+    // --- MASTER DATA FETCHER ---
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            try {
+                let res;
+                // Add the limit parameter to both API calls!
+                const cursorParam = currentCursor ? `&cursor=${encodeURIComponent(currentCursor)}` : '';
+                
+                if (searchTerm.trim()) {
+                    res = await apiClient.get(`/api/orders/flow/search?query=${searchTerm}${cursorParam}&limit=${limit}`);
+                } else {
+                    const dbStatus = statusMap[activeTab];
+                    res = await apiClient.get(`/api/orders/flow/list?status=${dbStatus}${cursorParam}&limit=${limit}`);
+                }
+
+                const dataArray = res.data.items || res.data; 
+                const hasNextPage = res.data.hasNext || false;
+                const nextCur = res.data.nextCursor || null;
+                
+                setOrders(formatOrders(dataArray));
+                setHasNext(hasNextPage);
+                setNextCursorStr(nextCur);
+
+            } catch (error) {
+                console.error("Data fetch failed", error);
+            }
+        }, searchTerm ? 800 : 0); 
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [activeTab, currentCursor, searchTerm, refreshTrigger, limit]);
+
+    useEffect(() => { 
+        fetchCounts(); 
+    }, [activeTab, refreshTrigger]);
+
+    // --- PAGINATION HANDLERS ---
+    const handleNextPage = () => {
+        if (hasNext && nextCursorStr) {
+            setCursorHistory(prev => [...prev, currentCursor]); 
+            setCurrentCursor(nextCursorStr); 
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (cursorHistory.length > 0) {
+            const newHistory = [...cursorHistory];
+            const prevCursor = newHistory.pop(); 
+            setCursorHistory(newHistory);
+            setCurrentCursor(prevCursor); 
+        }
+    };
+
+    // Reset pagination when limit is changed
+    const handleLimitChange = (e) => {
+        setLimit(Number(e.target.value));
+    };
 
     const handleApplyFilters = async () => {
         const params = new URLSearchParams();
         params.append("status", statusMap[activeTab]);
-        if(filters.fromDate) params.append("fromDate", filters.fromDate);
-        if(filters.toDate) params.append("toDate", filters.toDate);
-        if(filters.channel) params.append("channel", filters.channel);
-        if(filters.sku) params.append("sku", filters.sku);
-        console.log("Applying Filters:", params.toString());
+        if (filters.fromDate) params.append("fromDate", filters.fromDate);
+        if (filters.toDate) params.append("toDate", filters.toDate);
+        if (filters.channel) params.append("channel", filters.channel);
+        if (filters.sku) params.append("sku", filters.sku);
+        
         try {
             const res = await apiClient.get(`/api/orders/flow/filter?${params.toString()}`);
-            const mappedOrders = res.data.map(order => ({
-                id: order.id, orderId: order.orderId,
-                itemId:order.orderItemId||order.uniqueReferenceId, channel:order.channel,
-                img: order.imageUrl ? (order.imageUrl.startsWith('http') ? order.imageUrl : `${apiClient.defaults.baseURL || 'http://localhost:8080'}/${order.imageUrl}`) : "http://via.placeholder.com/100",
-                title:order.productName, sku:order.sku, fsn:order.fsn || order.asin,
-                itemcost:order.itemCost, qty:order.quantity,
-                amount:order.sellingPrice||order.productPayment+((order.productPayment*39)/100),
-                slaHours:order.slaHours, dispatchBy:order.dispatchByDate, originalData:order
-            }));
-            setOrders(mappedOrders);
+            setOrders(formatOrders(res.data)); 
+            setHasNext(false); 
+            setCursorHistory([]);
             alert("Filters applied!");
         } catch (err) { console.error(err); }
     };
 
     const handleReset = () => {
         setFilters({ fromDate: "", toDate: "", channel: "", sku: "" });
-        fetchOrders();
-    };
-
-    useEffect(()=>{
-        const delayDebounceFn = setTimeout( async () => {
-            if(searchTerm.trim()){
-                try{
-                    const res=apiClient.get(`/api/orders/flow/search?query=${searchTerm}`);  
-                    const mappedResults =(await res).data.map(order=>({
-                        id: order.id, orderId: order.orderId,
-                        itemId:order.orderItemId||order.uniqueReferenceId, channel:order.channel,
-                        img: order.imageUrl ? (order.imageUrl.startsWith('http') ? order.imageUrl : `${apiClient.defaults.baseURL || 'http://localhost:8080' }/${order.imageUrl}`) : "http://via.placeholder.com/100",
-                        title:order.productName, sku:order.sku, fsn:order.fsn || order.asin,
-                        itemcost:order.itemCost, qty:order.quantity,
-                        amount:order.sellingPrice||order.productPayment+((order.productPayment*39)/100),
-                        slaHours:order.slaHours, dispatchBy:order.dispatchByDate, originalData:order
-                    }));
-                    setOrders(mappedResults);
-                }catch(error){ console.error("Search failed",error); }  
-            }else{ fetchOrders(); }
-        },800);
-        return ()=>clearTimeout(delayDebounceFn);
-    },[searchTerm]);
-
-    useEffect(() => { fetchOrders(); fetchCounts(); }, [activeTab]);
-
-    const fetchOrders = async()=>{
-        try{
-            const dbStatus = statusMap[activeTab];
-            const res=await apiClient.get(`/api/orders/flow/list?status=${dbStatus}`);
-            const formattedData=res.data.map(order => ({
-                id: order.id, orderId: order.orderId,
-                itemId:order.orderItemId||order.uniqueReferenceId, channel:order.channel,
-                img: order.imageUrl ? (order.imageUrl.startsWith('http') ? order.imageUrl : `${apiClient.defaults.baseUrl || 'http://localhost:8080'}/${order.imageUrl}`) : "http://via.placeholder.com/100",
-                title:order.productName, sku:order.sku, fsn:order.fsn || order.asin,
-                itemcost:order.itemCost, qty:order.quantity,
-                amount:order.sellingPrice||order.productPayment+((order.productPayment*39)/100),
-                slaHours:order.slaHours, dispatchBy:order.dispatchByDate, originalData:order
-            }));
-            setOrders(formattedData);
-        }catch(e){ console.error("Error Fetching orders;",e); }
+        setCurrentCursor(null);
+        setCursorHistory([]);
+        setRefreshTrigger(prev => prev + 1); 
     };
 
     const handleAction = async (actionEndpoint) => {
-        if(selectedIds.length===0){ alert("Please select at least one order."); return; }
-        try{
-            await apiClient.post(`/api/orders/flow/${actionEndpoint}`,{ ids:selectedIds });
+        if (selectedIds.length === 0) { alert("Please select at least one order."); return; }
+        try {
+            await apiClient.post(`/api/orders/flow/${actionEndpoint}`, { ids: selectedIds });
             alert("Success!");
             setSelectedIds([]);
-            fetchOrders();
-            fetchCounts();
-        }catch(error){
+            setRefreshTrigger(prev => prev + 1); 
+        } catch (error) {
             console.error(error);
             alert("Action Failed: " + error.message);
         }
@@ -113,16 +160,17 @@ const OrderManagement = () => {
         if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(item => item !== id));
         else setSelectedIds([...selectedIds, id]);
     };
+
     const toggleSelectAll = (e) => {
         if (e.target.checked) setSelectedIds(orders.map(o => o.id));
         else setSelectedIds([]);
     };
 
     const getSlaDisplay = (hours, date) => {
-        if(hours<0){
+        if (hours < 0) {
             const delayedBy = Math.abs(hours);
-            return(
-               <div className="sla-badge" style={{backgroundColor: '#ffe3e3', color: '#c53030', border: '1px solid #c53030'}}>
+            return (
+                <div className="sla-badge" style={{ backgroundColor: '#ffe3e3', color: '#c53030', border: '1px solid #c53030' }}>
                     <i className="bi bi-exclamation-octagon-fill"></i>
                     <div><div>Delayed by {delayedBy} hrs</div><div className="small opacity-75">SLA Breached</div></div>
                 </div>
@@ -151,13 +199,13 @@ const OrderManagement = () => {
         );
     };
 
-    const getPrimaryAction = () =>{
-        switch(activeTab){
-            case 'Pending Labels': return{ label:"Generate Labels", icon:"bi-printer", endpoint:"generate-labels" };
-            case 'Pending RTD': return{ label:"Mark Ready to Dispatch", icon:"bi-box-seam", endpoint:"mark-rtd" };
-            case 'Pending Handover': return{ label:"Download Manifest", icon:"bi-file-earmark-spreadsheet", endpoint:"manifest" };
-            case 'On-Hold': return{ label:"Release Orders", icon:"bi-box-seam", endpoint:"unhold" };
-            case 'Completed': return{ label:"Download Orders", icon:"bi-file-earmark-spreadsheet", endpoint:"download-orders" };
+    const getPrimaryAction = () => {
+        switch (activeTab) {
+            case 'Pending Labels': return { label: "Generate Labels", icon: "bi-printer", endpoint: "generate-labels" };
+            case 'Pending RTD': return { label: "Mark Ready to Dispatch", icon: "bi-box-seam", endpoint: "mark-rtd" };
+            case 'Pending Handover': return { label: "Download Manifest", icon: "bi-file-earmark-spreadsheet", endpoint: "manifest" };
+            case 'On-Hold': return { label: "Release Orders", icon: "bi-box-seam", endpoint: "unhold" };
+            case 'Completed': return { label: "Download Orders", icon: "bi-file-earmark-spreadsheet", endpoint: "download-orders" };
             default: return null;
         }
     };
@@ -166,7 +214,6 @@ const OrderManagement = () => {
     return (
         <div className="container-fluid p-0 position-relative">
             <style>{`
-
                 /* ================================================
                    MOBILE CARD VIEW — hidden by default
                    ================================================ */
@@ -184,7 +231,6 @@ const OrderManagement = () => {
                    MOBILE (≤992px) — fix only, no visual changes
                    ================================================ */
                 @media (max-width: 992px) {
-
                     /* Switch table → cards */
                     .pro-table-desktop-view { display: none !important; }
                     .mobile-card-view { display: block !important; }
@@ -292,7 +338,6 @@ const OrderManagement = () => {
 
                 /* ================================================
                    MOBILE ORDER CARD STYLES
-                   (mirrors the visual language of the desktop table)
                    ================================================ */
                 .order-mobile-card {
                     border: 1px solid #e9ecef;
@@ -346,7 +391,7 @@ const OrderManagement = () => {
             {/* DRAWER BACKDROP */}
             <div className={`drawer-backdrop ${quickViewOrder ? 'open' : ''}`} onClick={() => setQuickViewOrder(null)}></div>
 
-            {/* SLIDE-OVER DRAWER — unchanged */}
+            {/* SLIDE-OVER DRAWER */}
             <div className={`drawer-panel ${quickViewOrder ? 'open' : ''}`}>
                 {quickViewOrder && (
                     <>
@@ -356,9 +401,9 @@ const OrderManagement = () => {
                         </div>
                         <div className="drawer-body">
                             <div className="d-flex gap-3 mb-4">
-                                <img src={quickViewOrder.img} className="rounded border" style={{width: 60, height: 60, objectFit: 'cover'}} />
+                                <img src={quickViewOrder.img} className="rounded border" style={{ width: 60, height: 60, objectFit: 'cover' }} alt="Product" />
                                 <div>
-                                    <div className="fw-bold text-truncate" style={{maxWidth: '280px'}}>{quickViewOrder.title}</div>
+                                    <div className="fw-bold text-truncate" style={{ maxWidth: '280px' }}>{quickViewOrder.title}</div>
                                     <div className="small text-muted font-monospace">{quickViewOrder.sku}</div>
                                 </div>
                             </div>
@@ -385,7 +430,7 @@ const OrderManagement = () => {
                             <div className="bg-light p-3 rounded border mb-3">
                                 <div className="d-flex justify-content-between mb-2">
                                     <span className="small text-muted">Batch Number:</span>
-                                    <span className="small fw-bold font-monospace">{quickViewOrder.mfgBatch}</span>
+                                    <span className="small fw-bold font-monospace">{quickViewOrder.mfgBatch || 'N/A'}</span>
                                 </div>
                                 <div className="d-flex justify-content-between">
                                     <span className="small text-muted">Fabric Lot:</span>
@@ -395,11 +440,11 @@ const OrderManagement = () => {
                             <div className="ps-2">
                                 <div className="timeline-item active">
                                     <div className="small fw-bold">Order Received</div>
-                                    <div className="text-muted" style={{fontSize: '11px'}}>Today, 10:00 AM</div>
+                                    <div className="text-muted" style={{ fontSize: '11px' }}>Today, 10:00 AM</div>
                                 </div>
                                 <div className="timeline-item active">
                                     <div className="small fw-bold">Inventory Reserved</div>
-                                    <div className="text-muted" style={{fontSize: '11px'}}>Today, 10:05 AM</div>
+                                    <div className="text-muted" style={{ fontSize: '11px' }}>Today, 10:05 AM</div>
                                 </div>
                                 <div className="timeline-item">
                                     <div className="small text-muted">Ready to Dispatch</div>
@@ -422,9 +467,9 @@ const OrderManagement = () => {
                     <p className="text-muted small mb-0">Manage shipments, labels, and dispatch processing.</p>
                 </div>
                 <div className="d-flex gap-2">
-                    <button className="btn btn-light border shadow-sm" onClick={()=>window.location.href='/reports'}><i className="bi bi-cloud-download me-2"></i>Reports</button>
-                    <button className="btn btn-success shadow-sm" onClick={()=>window.location.href='/orders/create'}><i className="bi bi-plus-lg me-2"></i>Create Manual Order</button>
-                    <button className="btn btn-dark shadow-sm" onClick={()=>window.location.href='/dispatch/scan'}>
+                    <button className="btn btn-light border shadow-sm" onClick={() => window.location.href = '/reports'}><i className="bi bi-cloud-download me-2"></i>Reports</button>
+                    <button className="btn btn-success shadow-sm" onClick={() => window.location.href = '/orders/create'}><i className="bi bi-plus-lg me-2"></i>Create Manual Order</button>
+                    <button className="btn btn-dark shadow-sm" onClick={() => window.location.href = '/dispatch/scan'}>
                         <i className="bi bi-upc-scan me-2"></i> Scan & Pack
                     </button>
                 </div>
@@ -433,10 +478,9 @@ const OrderManagement = () => {
             {/* STAT CARDS */}
             <div className="row g-4 mb-5 om-stats-row">
                 {[
-                    { label: "Pending Labels", val:stats.approved, icon: "bi-tags", color: "text-primary" },
+                    { label: "Pending Labels", val: stats.approved, icon: "bi-tags", color: "text-primary" },
                     { label: "Pending RTD", val: stats.packing_in_progress, icon: "bi-box-seam", color: "text-warning" },
                     { label: "Handover Pending", val: stats.dispatch_ready, icon: "bi-truck", color: "text-info" },
-                    // { label: "In Transit", val: stats.shipped, icon: "bi-map", color: "text-success" },
                     { label: "Completed", val: stats.shipped, icon: "bi-map", color: "text-success" },
                 ].map((stat, idx) => (
                     <div className="col-md-3" key={idx}>
@@ -453,7 +497,7 @@ const OrderManagement = () => {
             <div className="bg-white rounded-top-4 border border-bottom-0 shadow-sm p-4 pb-0">
                 <div className="d-flex justify-content-between align-items-center border-bottom pb-3 om-tabs-search-bar">
                     <div className="modern-tabs mb-0 border-bottom-0">
-                        {['Pending Labels', 'Pending RTD', 'Pending Handover', 'Completed','On-Hold'].map(tab => (
+                        {['Pending Labels', 'Pending RTD', 'Pending Handover', 'Completed', 'On-Hold'].map(tab => (
                             <div key={tab} className={`modern-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
                                 {tab}
                                 {activeTab === tab && <span className="badge bg-success-subtle text-success ms-2 rounded-pill">{}</span>}
@@ -461,16 +505,16 @@ const OrderManagement = () => {
                         ))}
                     </div>
                     <div className="d-flex gap-2">
-                        <div className="input-group input-group-sm" style={{width: '250px'}}>
+                        <div className="input-group input-group-sm" style={{ width: '250px' }}>
                             <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                            <input type="text" className="form-control" placeholder="Order ID or SKU..." value={searchTerm} onChange={(e)=> setSearchTerm(e.target.value)}/>
+                            <input type="text" className="form-control" placeholder="Order ID or SKU..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* FILTER BAR + TABLE/CARDS */}
-            <div className="bg-white border rounded-bottom-4 shadow-sm overflow-hidden" style={{marginBottom: '100px'}}>
+            <div className="bg-white border rounded-bottom-4 shadow-sm overflow-hidden" style={{ marginBottom: '100px' }}>
                 <div className="filter-bar-container mb-1">
                     <div className="filter-icon-box">
                         <i className="bi bi-funnel-fill"></i>
@@ -478,26 +522,27 @@ const OrderManagement = () => {
                     <div className="date-range-group">
                         <input type="text" className="date-range-input" placeholder="Start Date"
                             onFocus={(e) => e.target.type = 'date'} onBlur={(e) => e.target.type = 'text'}
-                            value={filters.fromDate} onChange={(e) => setFilters({...filters, fromDate: e.target.value})} />
+                            value={filters.fromDate} onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })} />
                         <span className="date-separator">to</span>
                         <input type="text" className="date-range-input" placeholder="End Date"
                             onFocus={(e) => e.target.type = 'date'} onBlur={(e) => e.target.type = 'text'}
-                            value={filters.toDate} onChange={(e) => setFilters({...filters, toDate: e.target.value})} />
+                            value={filters.toDate} onChange={(e) => setFilters({ ...filters, toDate: e.target.value })} />
                     </div>
-                    <select className="compact-select" value={filters.channel} onChange={(e) => setFilters({...filters, channel: e.target.value})}>
+                    <select className="compact-select" value={filters.channel} onChange={(e) => setFilters({ ...filters, channel: e.target.value })}>
                         <option value="">Channel of Sale</option>
                         <option value="Flipkart">Flipkart</option>
                         <option value="Myntra">Myntra</option>
                         <option value="Amazon">Amazon</option>
                         <option value="Meesho">Meesho</option>
+                        <option value="Website">Website</option>
                     </select>
                     <input type="text" className="compact-input" placeholder="Search SKU / FSN"
-                        value={filters.sku} onChange={(e) => setFilters({...filters, sku: e.target.value})} />
+                        value={filters.sku} onChange={(e) => setFilters({ ...filters, sku: e.target.value })} />
                     <button className="btn-apply ms-2" onClick={handleApplyFilters}>Apply</button>
                     <span className="btn-reset" onClick={handleReset}>Reset</span>
                 </div>
 
-                {/* DESKTOP TABLE — 100% original, not touched */}
+                {/* DESKTOP TABLE */}
                 <div className="table-responsive pro-table-desktop-view">
                     <table className="modern-table">
                         <thead>
@@ -516,7 +561,7 @@ const OrderManagement = () => {
                                 <tr key={order.id} className={selectedIds.includes(order.id) ? "bg-light" : ""}>
                                     <td><input type="checkbox" className="form-check-input" checked={selectedIds.includes(order.id)} onChange={() => toggleSelect(order.id)} /></td>
                                     <td>
-                                        <div className="fw-bold text-primary" style={{fontFamily: 'monospace', fontSize: '13px'}}>
+                                        <div className="fw-bold text-primary" style={{ fontFamily: 'monospace', fontSize: '13px' }}>
                                             {order.orderId}
                                             <i className="bi bi-copy copy-icon" title="Copy Order ID"></i>
                                         </div>
@@ -527,7 +572,7 @@ const OrderManagement = () => {
                                         <div className="product-flex">
                                             <div className="product-img-box"><img src={order.img} alt="Product" /></div>
                                             <div>
-                                                <div className="fw-bold text-dark text-truncate" style={{maxWidth: '350px'}} title={order.title}>{order.title}</div>
+                                                <div className="fw-bold text-dark text-truncate" style={{ maxWidth: '350px' }} title={order.title}>{order.title}</div>
                                                 <div className="mt-2"><span className="meta-tag" title="SKU">SKU: {order.sku}</span><span className="meta-tag" title="FSN">ID: {order.fsn}</span></div>
                                             </div>
                                         </div>
@@ -550,7 +595,7 @@ const OrderManagement = () => {
                     </table>
                 </div>
 
-                {/* MOBILE CARD VIEW — same data, card layout */}
+                {/* MOBILE CARD VIEW */}
                 <div className="mobile-card-view p-3">
                     <div className="d-flex align-items-center gap-2 mb-3">
                         <input type="checkbox" className="form-check-input" onChange={toggleSelectAll}
@@ -569,7 +614,7 @@ const OrderManagement = () => {
                                     <div className="order-mobile-card-sku">SKU: {order.sku} &nbsp;·&nbsp; ID: {order.itemId}</div>
                                 </div>
                                 <button className="btn btn-sm btn-light border text-muted"
-                                    style={{flexShrink:0}}
+                                    style={{ flexShrink: 0 }}
                                     onClick={() => setQuickViewOrder(order)} title="Quick View">
                                     <i className="bi bi-eye"></i>
                                 </button>
@@ -584,16 +629,49 @@ const OrderManagement = () => {
                     ))}
                 </div>
 
+                {/* --- UPDATED: DYNAMIC PAGINATION FOOTER W/ LIMIT SELECTOR --- */}
                 <div className="p-3 border-top d-flex justify-content-between align-items-center bg-light">
-                    <span className="small text-muted">Showing 1–{stats.approved} of {stats.approved} orders</span>
+                    <div className="d-flex align-items-center gap-3">
+                        <span className="small text-muted d-none d-md-inline">
+                            Page {cursorHistory.length + 1} &nbsp;·&nbsp; {orders.length} orders on this page
+                        </span>
+                        
+                        {/* THE NEW PAGE SIZE DROPDOWN */}
+                        <div className="d-flex align-items-center gap-2">
+                            <span className="small text-muted">Show:</span>
+                            <select 
+                                className="form-select form-select-sm" 
+                                style={{ width: '80px', fontSize: '13px', cursor: 'pointer' }}
+                                value={limit}
+                                onChange={handleLimitChange}
+                            >
+                                <option value={50}>50</option>
+                                <option value={80}>80</option>
+                                <option value={120}>120</option>
+                                <option value={180}>180</option>
+                                <option value={240}>240</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div className="btn-group">
-                        <button className="btn btn-sm btn-white border">Previous</button>
-                        <button className="btn btn-sm btn-white border">Next</button>
+                        <button 
+                            className="btn btn-sm btn-white border shadow-sm" 
+                            onClick={handlePrevPage} 
+                            disabled={cursorHistory.length === 0}>
+                            <i className="bi bi-chevron-left me-1"></i> Previous
+                        </button>
+                        <button 
+                            className="btn btn-sm btn-white border shadow-sm" 
+                            onClick={handleNextPage} 
+                            disabled={!hasNext}>
+                            Next <i className="bi bi-chevron-right ms-1"></i>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* FLOATING DOCK — unchanged */}
+            {/* FLOATING DOCK */}
             {selectedIds.length > 0 && (
                 <div className="floating-dock">
                     <div className="d-flex align-items-center gap-2">
@@ -602,10 +680,10 @@ const OrderManagement = () => {
                     </div>
                     <div className="dock-divider"></div>
                     <button className="dock-btn" title="Download Invoices"><i className="bi bi-file-earmark-pdf fs-5"></i></button>
-                    <button className="dock-btn" title="Hold Shipment" onClick={()=>handleAction('on-hold')}><i className="bi bi-pause-circle fs-5"></i></button>
-                    <button className="dock-btn text-danger" title="Cancel Orders" onClick={()=> window.confirm("Are you sure ?") ? handleAction('cancel') : ""}><i className="bi bi-x-circle fs-5"></i></button>
+                    <button className="dock-btn" title="Hold Shipment" onClick={() => handleAction('on-hold')}><i className="bi bi-pause-circle fs-5"></i></button>
+                    <button className="dock-btn text-danger" title="Cancel Orders" onClick={() => window.confirm("Are you sure ?") ? handleAction('cancel') : ""}><i className="bi bi-x-circle fs-5"></i></button>
                     <button className="dock-btn text-danger" title="Permanently Delete"
-                        onClick={() => { if(window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} orders?\n\nThis will revert inventory stock.`)) { handleAction('delete'); } }}>
+                        onClick={() => { if (window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} orders?\n\nThis will revert inventory stock.`)) { handleAction('delete'); } }}>
                         <i className="bi bi-trash3-fill fs-5"></i>
                     </button>
                     <div className="dock-divider"></div>
