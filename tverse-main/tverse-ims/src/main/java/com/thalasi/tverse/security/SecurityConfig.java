@@ -26,6 +26,8 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Autowired
+    private ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -79,10 +81,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/dispatch/scan").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER", "EMPLOYEE")
                         .requestMatchers("/api/dispatch/logs").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
 
+                        // 8. API Key's
+                        .requestMatchers("/api/keys/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "OWNER")
                         // Fallback default catch-all: All other requests must be fully authenticated
                         .anyRequest().authenticated()
                 );
-
+        http.addFilterBefore(apiKeyAuthenticationFilter, JwtAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
