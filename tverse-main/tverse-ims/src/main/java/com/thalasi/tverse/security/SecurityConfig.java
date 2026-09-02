@@ -86,7 +86,7 @@ public class SecurityConfig {
                         // Fallback default catch-all: All other requests must be fully authenticated
                         .anyRequest().authenticated()
                 );
-        http.addFilterBefore(apiKeyAuthenticationFilter, JwtAuthenticationFilter.class);
+        http.addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
