@@ -40,6 +40,7 @@ const PicklistPage = () => {
         try {
             const response = await apiClient.post("/api/orders/generate-picklist", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
+                timeout: 120000,
             });
             setPicklist(response.data);
             
