@@ -101,34 +101,51 @@ public class PicklistService {
         Map<String, Map<String, Integer>> recipes = mappingService.resolveSkuRecipes(allOrderSkus);
 
         Map<String, Integer> picklistMap = new HashMap<>();
+
         for (OrderRow row : rawOrders) {
             Map<String, Integer> recipe = recipes.get(row.sku);
-            for (Map.Entry<String, Integer> entry : recipe.entrySet()) {
-                String realSku = entry.getKey();
-                int qtyPerUnit = entry.getValue();
-                if (row.status == null || !row.status.equalsIgnoreCase("Cancelled")) {
-                    picklistMap.merge(realSku, qtyPerUnit * row.qty, Integer::sum);
+                if(recipe !=null) {
+                    for (Map.Entry<String, Integer> entry : recipe.entrySet()) {
+                        String realSku = entry.getKey();
+                        int qtyPerUnit = entry.getValue();
+                        if (row.status == null || !row.status.equalsIgnoreCase("Cancelled")) {
+                            picklistMap.merge(realSku, qtyPerUnit * row.qty, Integer::sum);
+                        }
+                    }
+                } else {
+                  if(row.status == null || !row.status.equalsIgnoreCase("Cancelled")){
+                      picklistMap.merge(row.sku,row.qty,Integer::sum);
+                  }
                 }
-            }
         }
 
         // 4. GENERATE UI DATA
         List<PicklistResultDTO> picklist = new ArrayList<>();
 
+        List<String> distinctOrderSkus = new ArrayList<>(picklistMap.keySet());
+        Map<String,productVariant> variantMap = Collections.emptyMap();
+        if(!distinctOrderSkus.isEmpty()){
+            variantMap = variantRepo.findBySkuIn(distinctOrderSkus).stream()
+                    .collect(Collectors.toMap(productVariant::getSku, v -> v,(existing,replacement)-> existing));
+        }
         for (Map.Entry<String, Integer> entry : picklistMap.entrySet()) {
             String orderSku = entry.getKey();
             Integer orderQty = entry.getValue();
 
-            Optional<productVariant> variantOpt = variantRepo.findBySku(orderSku);
+            productVariant v = variantMap.get(orderSku);
+
             PicklistResultDTO item = new PicklistResultDTO();
             item.setSku(orderSku);
             item.setOrderQty(orderQty);
             item.setPicklistId(currentBatchId);
 
-            if (variantOpt.isPresent()) {
-                productVariant v = variantOpt.get();
-                item.setProductName(v.getProduct().getName());
-                item.setImageUrl(v.getProduct().getImageUrl());
+            if (v !=null) {
+                if(v.getProduct()!=null){
+                    item.setProductName(v.getProduct().getName());
+                    item.setImageUrl(v.getProduct().getImageUrl());
+                } else {
+                    item.setProductName("UNKNOWN PRODUCT");
+                }
 
                 String varDetails = "";
                 if(v.getSize() != null) varDetails += "Size: " + v.getSize() + " ";

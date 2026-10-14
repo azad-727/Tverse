@@ -19,7 +19,10 @@ import org.springframework.data.domain.Slice;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class OrderFlowService {
@@ -157,33 +160,72 @@ public class OrderFlowService {
     // 5. Action: Download Manifest (Move to SHIPPED)
     @Transactional
     public void generateManifest(List<Long> orderIds) {
+
         List<SalesOrder> orders = orderRepo.findAllById(orderIds);
         String newManifestId = "MAN-" + System.currentTimeMillis();
+        Map<String,Integer> skuDeductions =new HashMap<>();
+
         for (SalesOrder order : orders) {
             order.setOrderStatus("SHIPPED");
-            updateInventory(order.getSku(),order.getQuantity(),"DEDUCT");
+            if(order.getSku() !=null && order.getQuantity()>0){
+                skuDeductions.merge(order.getSku(),order.getQuantity(),Integer::sum);
+            }
             order.setManifestId(newManifestId);
+        }
+        if(!skuDeductions.isEmpty()){
+
+            List<productVariant> variants=variantRepo.findBySkuIn(new ArrayList<>(skuDeductions.keySet()));
+            for(productVariant variant:variants){
+                int qtyToDeduct = skuDeductions.getOrDefault(variant.getSku(),0);
+                variant.setStockOnHand(variant.getStockOnHand()-qtyToDeduct);
+                variant.setStockCommitted(variant.getStockCommitted()-qtyToDeduct);
+            }
+            variantRepo.saveAll(variants);
         }
         orderRepo.saveAll(orders);
     }
     @Transactional
     public void deleteOrders(List<Long> orderIds){
-        List<SalesOrder> orders=orderRepo.findAllById(orderIds);
-        for(SalesOrder order:orders){
-            if(!"SHIPPED".equalsIgnoreCase(order.getOrderStatus()) &&
-               !"CANCELLED".equalsIgnoreCase(order.getOrderStatus())){
-            updateInventory(order.getSku(),order.getQuantity(),"RELEASE");
-            }
-            orderRepo.delete(order);
 
+        List<SalesOrder> orders=orderRepo.findAllById(orderIds);
+        Map<String,Integer> skuReleases = new HashMap<>();
+
+        for(SalesOrder order:orders) {
+            if (!"SHIPPED".equalsIgnoreCase(order.getOrderStatus()) &&
+                    !"CANCELLED".equalsIgnoreCase(order.getOrderStatus())) {
+                if (order.getSku() != null && order.getQuantity() > 0) {
+                    skuReleases.merge(order.getSku(), order.getQuantity(), Integer::sum);
+                }
+            }
         }
+            if(!skuReleases.isEmpty()){
+                List<productVariant> variants=variantRepo.findBySkuIn(new ArrayList<>(skuReleases.keySet()));
+                for(productVariant variant:variants){
+                    int qtyToRelease=skuReleases.getOrDefault(variant.getSku(),0);
+                    variant.setStockCommitted(variant.getStockCommitted() - qtyToRelease);
+                }
+                variantRepo.saveAll(variants);
+            }
+            orderRepo.deleteAll(orders);
     }
     @Transactional
     public void cancelOrders(List<Long> orderIds){
         List<SalesOrder> orders = orderRepo.findAllById(orderIds);
+        Map<String,Integer> skuToRelease = new HashMap<>();
+
         for(SalesOrder order : orders){
             order.setOrderStatus("CANCELLED");
-            updateInventory(order.getSku(),order.getQuantity(),"RELEASE");
+            if(order.getSku()!=null && order.getQuantity()>0) {
+                skuToRelease.merge(order.getSku(), order.getQuantity(), Integer::sum);
+            }
+        }
+        if(!skuToRelease.isEmpty()){
+            List<productVariant> productVariants=variantRepo.findBySkuIn(new ArrayList<>(skuToRelease.keySet()));
+            for(productVariant variant:productVariants){
+                int qtyToRelease=skuToRelease.getOrDefault(variant.getSku(),0);
+                variant.setStockCommitted(variant.getStockCommitted() - qtyToRelease);
+            }
+            variantRepo.saveAll(productVariants);
         }
         orderRepo.saveAll(orders);
     }
